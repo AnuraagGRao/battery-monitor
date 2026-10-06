@@ -14,9 +14,11 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: WEBHOOK_SECRET
-        value: macrodroid_battery_secret_2026
+        value: vw_sec_633b4856c45db954db91ef365de93019
       - key: ADMIN_USER
         value: radi
+      - key: ADMIN_EMAIL
+        value: anuraag7rao@gmail.com
       - key: ADMIN_PASS
         value: Admin@12345
       - key: FIREBASE_API_KEY

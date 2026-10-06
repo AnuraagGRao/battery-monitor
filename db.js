@@ -86,8 +86,20 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
   `);
 
-  // 5. Backfill webhook keys for any existing users
-  const defaultSecret = process.env.WEBHOOK_SECRET || 'macrodroid_battery_secret_2026';
+  // 5. Backfill webhook keys and ensure primary admin sync
+  const defaultSecret = process.env.WEBHOOK_SECRET || 'vw_sec_633b4856c45db954db91ef365de93019';
+  const adminEmail = process.env.ADMIN_EMAIL || 'anuraag7rao@gmail.com';
+
+  const user1 = db.prepare('SELECT id, email, webhook_key FROM users WHERE id = 1').get();
+  if (user1) {
+    if (user1.webhook_key === 'macrodroid_battery_secret_2026' || !user1.webhook_key) {
+      db.prepare('UPDATE users SET webhook_key = ? WHERE id = 1').run(defaultSecret);
+    }
+    if (!user1.email) {
+      db.prepare('UPDATE users SET email = ?, display_name = COALESCE(display_name, ?) WHERE id = 1').run(adminEmail, 'Anuraag Rao');
+    }
+  }
+
   const usersWithoutKey = db.prepare('SELECT id, username FROM users WHERE webhook_key IS NULL').all();
   for (const u of usersWithoutKey) {
     const key = u.id === 1 ? defaultSecret : generateWebhookKey();
@@ -295,7 +307,24 @@ function createOrUpdateGoogleUser({ google_id, email, display_name, avatar_url }
     return getUserById(user.id);
   }
 
-  // 2. Check if user exists by email (link Google ID to existing account)
+  // 2. Link primary admin user (anuraag7rao@gmail.com or User 1)
+  const adminEmail = (process.env.ADMIN_EMAIL || 'anuraag7rao@gmail.com').toLowerCase();
+  if (email && email.toLowerCase() === adminEmail) {
+    const adminUser = getUserById(1);
+    if (adminUser) {
+      db.prepare(`
+        UPDATE users
+        SET google_id = ?,
+            email = ?,
+            display_name = COALESCE(?, display_name),
+            avatar_url = COALESCE(?, avatar_url)
+        WHERE id = 1
+      `).run(google_id, email, display_name, avatar_url);
+      return getUserById(1);
+    }
+  }
+
+  // 3. Check if user exists by email (link Google ID to existing account)
   if (email) {
     user = getUserByEmail(email);
     if (user) {
@@ -310,7 +339,7 @@ function createOrUpdateGoogleUser({ google_id, email, display_name, avatar_url }
     }
   }
 
-  // 3. New user registration from Google
+  // 4. New user registration from Google
   const usernameBase = (email ? email.split('@')[0] : 'google_user').toLowerCase().replace(/[^a-z0-9_]/g, '_');
   let username = usernameBase;
   let counter = 1;
@@ -344,7 +373,24 @@ function createOrUpdateFirebaseUser({ firebase_uid, email, display_name, avatar_
     return getUserById(user.id);
   }
 
-  // 2. Check if user exists by email (link Firebase UID to existing account)
+  // 2. Link primary admin user (anuraag7rao@gmail.com or User 1)
+  const adminEmail = (process.env.ADMIN_EMAIL || 'anuraag7rao@gmail.com').toLowerCase();
+  if (email && email.toLowerCase() === adminEmail) {
+    const adminUser = getUserById(1);
+    if (adminUser) {
+      db.prepare(`
+        UPDATE users
+        SET firebase_uid = ?,
+            email = ?,
+            display_name = COALESCE(?, display_name),
+            avatar_url = COALESCE(?, avatar_url)
+        WHERE id = 1
+      `).run(firebase_uid, email, display_name, avatar_url);
+      return getUserById(1);
+    }
+  }
+
+  // 3. Check if user exists by email (link Firebase UID to existing account)
   if (email) {
     user = getUserByEmail(email);
     if (user) {
@@ -359,7 +405,7 @@ function createOrUpdateFirebaseUser({ firebase_uid, email, display_name, avatar_
     }
   }
 
-  // 3. New user registration from Firebase
+  // 4. New user registration from Firebase
   const usernameBase = (email ? email.split('@')[0] : 'firebase_user').toLowerCase().replace(/[^a-z0-9_]/g, '_');
   let username = usernameBase;
   let counter = 1;
@@ -377,6 +423,11 @@ function createOrUpdateFirebaseUser({ firebase_uid, email, display_name, avatar_
     .run(username, email, unusablePassword, firebase_uid, display_name || username, avatar_url, webhookKey);
 
   return getUserById(res.lastInsertRowid);
+}
+
+function setWebhookKey(userId, key) {
+  db.prepare(`UPDATE users SET webhook_key = ? WHERE id = ?`).run(key, userId);
+  return key;
 }
 
 function regenerateWebhookKey(userId) {
@@ -407,6 +458,7 @@ module.exports = {
   createUser,
   createOrUpdateGoogleUser,
   createOrUpdateFirebaseUser,
+  setWebhookKey,
   regenerateWebhookKey,
   getUserCount,
 };

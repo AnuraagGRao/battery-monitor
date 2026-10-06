@@ -21,6 +21,7 @@ const {
   createUser,
   createOrUpdateGoogleUser,
   createOrUpdateFirebaseUser,
+  setWebhookKey,
   regenerateWebhookKey,
   getUserCount,
 } = require('./db');
@@ -30,7 +31,8 @@ const PORT = process.env.PORT || 3000;
 
 // Configuration Secrets
 const JWT_SECRET = process.env.JWT_SECRET || 'voltwatch_default_jwt_secret_dev_2026_xyz987';
-const GLOBAL_WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'macrodroid_battery_secret_2026';
+const GLOBAL_WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'vw_sec_633b4856c45db954db91ef365de93019';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'anuraag7rao@gmail.com';
 const ADMIN_USER = process.env.ADMIN_USER || 'radi';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'Admin@12345';
 
@@ -45,14 +47,25 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const GOOGLE_CALLBACK_URL =
   process.env.GOOGLE_CALLBACK_URL || `http://localhost:${PORT}/api/auth/google/callback`;
 
-// Initialize default admin user if no users exist
+// Initialize default admin user if no users exist, or sync primary admin
 if (getUserCount() === 0) {
   const hash = bcrypt.hashSync(ADMIN_PASS, 10);
   createUser(ADMIN_USER, hash, {
-    display_name: 'Radi',
+    email: ADMIN_EMAIL,
+    display_name: 'Anuraag Rao',
     webhook_key: GLOBAL_WEBHOOK_SECRET,
   });
-  console.log(`[BOOT] Seeded default administrator user: "${ADMIN_USER}"`);
+  console.log(`[BOOT] Seeded default administrator user: "${ADMIN_USER}" (${ADMIN_EMAIL})`);
+} else {
+  const admin = getUserById(1);
+  if (admin) {
+    if (!admin.email) {
+      require('./db').db.prepare('UPDATE users SET email = ?, display_name = ? WHERE id = 1').run(ADMIN_EMAIL, 'Anuraag Rao');
+    }
+    if (admin.webhook_key === 'macrodroid_battery_secret_2026') {
+      setWebhookKey(1, GLOBAL_WEBHOOK_SECRET);
+    }
+  }
 }
 
 // Security & Parsing Middleware
@@ -155,8 +168,12 @@ function requireWebhookSecret(req, res, next) {
     return next();
   }
 
-  // 2. Fallback check for global server secret (timing-safe)
-  if (safeStringCompare(providedSecret, GLOBAL_WEBHOOK_SECRET)) {
+  // 2. Fallback check for global server secret or target phone secret (timing-safe)
+  const TARGET_PHONE_SECRET = 'vw_sec_633b4856c45db954db91ef365de93019';
+  if (
+    safeStringCompare(providedSecret, GLOBAL_WEBHOOK_SECRET) ||
+    safeStringCompare(providedSecret, TARGET_PHONE_SECRET)
+  ) {
     const targetUsername = req.query?.user || req.body?.user || req.query?.username;
     if (targetUsername) {
       const u = getUserByUsername(targetUsername);
@@ -403,30 +420,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
   }
 });
 
-// ── Traditional Username/Password Login ────────────────────────────────────
-app.post('/api/auth/login', (req, res) => {
-  const { username, password } = req.body || {};
 
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required' });
-  }
-
-  const user = getUserByUsername(username.trim());
-  if (!user || !user.password_hash || !bcrypt.compareSync(password, user.password_hash)) {
-    return res.status(401).json({ error: 'Invalid username or password' });
-  }
-
-  issueSessionCookie(res, user);
-
-  return res.json({
-    success: true,
-    user: {
-      id: user.id,
-      username: user.username,
-      display_name: user.display_name,
-    },
-  });
-});
 
 app.post('/api/auth/logout', (req, res) => {
   res.clearCookie('voltwatch_auth');
@@ -447,10 +441,20 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   });
 });
 
-// ── Webhook Secret Key Rotation ───────────────────────────────────────────
+// ── Webhook Secret Key Management ─────────────────────────────────────────
 app.post('/api/user/regenerate-webhook-key', requireAuth, (req, res) => {
   const newKey = regenerateWebhookKey(req.user.id);
   res.json({ success: true, webhook_key: newKey });
+});
+
+app.post('/api/user/set-webhook-key', requireAuth, (req, res) => {
+  const { webhook_key } = req.body || {};
+  if (!webhook_key || typeof webhook_key !== 'string' || webhook_key.trim().length < 8) {
+    return res.status(400).json({ error: 'Webhook secret must be at least 8 characters long.' });
+  }
+  const cleanKey = webhook_key.trim();
+  setWebhookKey(req.user.id, cleanKey);
+  res.json({ success: true, webhook_key: cleanKey });
 });
 
 // ── Automation (Jens Schröder) & MacroDroid Webhook Ingestion ───────────────
@@ -538,10 +542,12 @@ app.get('/api/battery/stats', requireAuth, (req, res) => {
   const userId = req.user.id;
   const hours = Math.min(Math.max(parseInt(req.query.hours, 10) || 24, 1), 168);
 
-  const latest = getLatestLog(userId) || {
-    battery_level: 100,
-    event: 'initial_standby',
-    recorded_at: new Date().toISOString(),
+  const rawLatest = getLatestLog(userId);
+  const hasData = rawLatest !== null;
+  const latest = rawLatest || {
+    battery_level: null,
+    event: 'awaiting_telemetry',
+    recorded_at: null,
   };
 
   const timeline = getTimeline(userId, hours);
@@ -549,9 +555,10 @@ app.get('/api/battery/stats', requireAuth, (req, res) => {
   const stats = getDailyStats(userId);
 
   const isCharging =
-    latest.event === 'charger_connected' ||
-    latest.event === 'charging' ||
-    latest.event === 'battery_full';
+    hasData &&
+    (latest.event === 'charger_connected' ||
+      latest.event === 'charging' ||
+      latest.event === 'battery_full');
 
   res.json({
     user: {
@@ -562,6 +569,7 @@ app.get('/api/battery/stats', requireAuth, (req, res) => {
       avatar_url: req.user.avatar_url,
       webhook_key: req.user.webhook_key,
     },
+    has_data: hasData,
     current: {
       battery_level: latest.battery_level,
       event: latest.event,
