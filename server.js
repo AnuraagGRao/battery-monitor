@@ -465,12 +465,11 @@ function handleBatteryWebhook(req, res) {
     payload.percent !== undefined ? payload.percent :
     payload.pct;
 
-  const level = Number(rawLevel);
+  let level = Number(rawLevel);
   if (rawLevel === undefined || Number.isNaN(level) || level < 0 || level > 100) {
-    return res.status(400).json({
-      error: 'Invalid payload',
-      message: 'Battery level must be an integer between 0 and 100 (e.g. level, battery_level, percent)',
-    });
+    // Fallback to user's latest known battery reading if level is omitted or unparsed placeholder
+    const latest = getLatestLog(user.id);
+    level = latest && typeof latest.battery_level === 'number' ? latest.battery_level : 100;
   }
 
   // 2. Intelligently normalize event name
