@@ -257,8 +257,8 @@
             📲
           </div>
           <div>
-            <h3 class="text-base font-bold text-white">Phone Automation Setup</h3>
-            <p class="text-xs text-slate-400">Connect Automation (by Jens Schröder / F-Droid)</p>
+            <h3 class="text-base font-bold text-white">Phone Setup</h3>
+            <p class="text-xs text-slate-400">Connect your Android automation app</p>
           </div>
         </div>
         <button
@@ -277,7 +277,7 @@
             <span class="text-base">🔐</span>
             <div>
               <span class="font-bold text-emerald-300 text-xs uppercase tracking-wide block">Your Webhook Secret</span>
-              <span class="text-[0.68rem] text-slate-400">Authenticated to your Google account (<span id="setup-user-email">anuraag7rao@gmail.com</span>)</span>
+              <span class="text-[0.68rem] text-slate-400">Authenticated account: <span id="setup-user-email">Loading...</span></span>
             </div>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
@@ -309,7 +309,7 @@
         </div>
 
         <div class="space-y-1">
-          <span class="text-[0.68rem] uppercase font-mono text-slate-400 block font-semibold">Your Quick GET URL (Paste directly into Automation):</span>
+          <span class="text-[0.68rem] uppercase font-mono text-slate-400 block font-semibold">Your Quick GET URL (Paste directly into phone automation):</span>
           <div class="p-2.5 rounded-xl bg-black/70 border border-cyan-500/20 font-mono text-[0.72rem] text-cyan-200 flex items-center justify-between gap-2 overflow-x-auto">
             <span id="user-quick-url" class="select-all break-all">Generating URL...</span>
             <button id="copy-url-btn" class="flex-shrink-0 px-2.5 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[0.68rem] cursor-pointer font-bold">
@@ -319,18 +319,18 @@
         </div>
       </div>
 
-      <!-- Automation by Jens Schröder Guide -->
+      <!-- Android Automation Setup Guide -->
       <div class="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3 font-mono text-xs">
         <div class="flex items-center justify-between">
           <span class="text-emerald-400 font-bold flex items-center gap-1.5">
-            <span>🤖</span> Automation (by Jens Schröder / F-Droid)
+            <span>⚙️</span> Android Automation Setup Guide
           </span>
-          <span class="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Active Setup</span>
+          <span class="text-[0.65rem] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Webhook</span>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-slate-300">
           <div class="p-3 rounded-xl bg-black/30 border border-white/5 space-y-1.5">
             <span class="text-white font-semibold block text-[0.7rem] uppercase text-emerald-400">1. Trigger</span>
-            <p>• <strong>Battery</strong> ➔ Battery Level changed (or below/above threshold)</p>
+            <p>• <strong>Battery</strong> ➔ Battery level changed (or threshold)</p>
             <p>• <strong>Charger</strong> ➔ Connected / Disconnected</p>
           </div>
           <div class="p-3 rounded-xl bg-black/30 border border-white/5 space-y-1.5">
@@ -406,7 +406,7 @@
   </div>
 
   <footer class="mt-8 text-center text-xs font-mono text-[#889096]/70">
-    VoltWatch · Protected Hardware Battery Telemetry · Designed for Android + Automation (by Jens Schröder)
+    VoltWatch · Protected Hardware Battery Telemetry · Android Webhook Console
   </footer>
 
   <script src="/static/js/app.js?v=20261006_5"></script>

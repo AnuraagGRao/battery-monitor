@@ -32,11 +32,11 @@ const {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Configuration Secrets
-const JWT_SECRET = process.env.JWT_SECRET || 'voltwatch_default_jwt_secret_dev_2026_xyz987';
-const GLOBAL_WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'vw_sec_633b4856c45db954db91ef365de93019';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'anuraag7rao@gmail.com';
-const ADMIN_USER = process.env.ADMIN_USER || 'radi';
+// Configuration Secrets (loaded dynamically from environment)
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const GLOBAL_WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || null;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || null;
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'Admin@12345';
 
 // Firebase & Google Configuration
@@ -55,17 +55,17 @@ if (getUserCount() === 0) {
   const hash = bcrypt.hashSync(ADMIN_PASS, 10);
   createUser(ADMIN_USER, hash, {
     email: ADMIN_EMAIL,
-    display_name: 'Anuraag Rao',
+    display_name: ADMIN_USER,
     webhook_key: GLOBAL_WEBHOOK_SECRET,
   });
-  console.log(`[BOOT] Seeded default administrator user: "${ADMIN_USER}" (${ADMIN_EMAIL})`);
+  console.log(`[BOOT] Seeded default administrator user: "${ADMIN_USER}"`);
 } else {
   const admin = getUserById(1);
   if (admin) {
-    if (!admin.email) {
-      require('./db').db.prepare('UPDATE users SET email = ?, display_name = ? WHERE id = 1').run(ADMIN_EMAIL, 'Anuraag Rao');
+    if (!admin.email && ADMIN_EMAIL) {
+      require('./db').db.prepare('UPDATE users SET email = ? WHERE id = 1').run(ADMIN_EMAIL);
     }
-    if (admin.webhook_key === 'macrodroid_battery_secret_2026') {
+    if (!admin.webhook_key && GLOBAL_WEBHOOK_SECRET) {
       setWebhookKey(1, GLOBAL_WEBHOOK_SECRET);
     }
   }
@@ -180,12 +180,8 @@ function requireWebhookSecret(req, res, next) {
     return next();
   }
 
-  // 2. Fallback check for global server secret or target phone secret (timing-safe)
-  const TARGET_PHONE_SECRET = 'vw_sec_633b4856c45db954db91ef365de93019';
-  if (
-    safeStringCompare(providedSecret, GLOBAL_WEBHOOK_SECRET) ||
-    safeStringCompare(providedSecret, TARGET_PHONE_SECRET)
-  ) {
+  // 2. Fallback check for global server secret (timing-safe)
+  if (GLOBAL_WEBHOOK_SECRET && safeStringCompare(providedSecret, GLOBAL_WEBHOOK_SECRET)) {
     const targetUsername = req.query?.user || req.body?.user || req.query?.username;
     if (targetUsername) {
       const u = getUserByUsername(targetUsername);
@@ -194,7 +190,7 @@ function requireWebhookSecret(req, res, next) {
         return next();
       }
     }
-    // Default to first user (Admin/Radi)
+    // Default to first user (Admin)
     const defaultUser = getUserById(1);
     if (defaultUser) {
       req.webhookUser = defaultUser;
@@ -469,7 +465,7 @@ app.post('/api/user/set-webhook-key', requireAuth, (req, res) => {
   res.json({ success: true, webhook_key: cleanKey });
 });
 
-// ── Automation (by Jens Schröder) Webhook Ingestion ─────────────────────────
+// ── Android Telemetry Webhook Ingestion ──────────────────────────────────
 // Isolated per user based on personal webhook key
 function handleBatteryWebhook(req, res) {
   const payload = { ...req.query, ...req.body };

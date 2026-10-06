@@ -204,7 +204,7 @@ function updateDashboardUI(data) {
       heroDesc.innerText = 'Awaiting first reading';
       heroDesc.className = 'text-xs font-semibold uppercase tracking-wider text-slate-400';
     }
-    if (heroUpdated) heroUpdated.innerText = 'Connect Automation to stream';
+    if (heroUpdated) heroUpdated.innerText = 'Connect phone webhook to stream';
   } else {
     const colors = getBatteryColor(current.battery_level);
     if (heroPercent) {

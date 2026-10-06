@@ -90,27 +90,29 @@ function initSchema() {
   `);
 
   // 5. Backfill webhook keys and ensure primary admin sync
-  const defaultSecret = process.env.WEBHOOK_SECRET || 'vw_sec_633b4856c45db954db91ef365de93019';
-  const adminEmail = (process.env.ADMIN_EMAIL || 'anuraag7rao@gmail.com').toLowerCase();
+  const defaultSecret = process.env.WEBHOOK_SECRET || generateWebhookKey();
+  const adminEmail = process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.toLowerCase() : null;
 
   const user1 = db.prepare('SELECT id, email, webhook_key FROM users WHERE id = 1').get();
   if (user1) {
-    if (user1.webhook_key === 'macrodroid_battery_secret_2026' || !user1.webhook_key) {
+    if (!user1.webhook_key) {
       db.prepare('UPDATE users SET webhook_key = ? WHERE id = 1').run(defaultSecret);
     }
-    if (!user1.email) {
-      db.prepare('UPDATE users SET email = ?, display_name = COALESCE(display_name, ?) WHERE id = 1').run(adminEmail, 'Anuraag Rao');
+    if (!user1.email && adminEmail) {
+      db.prepare('UPDATE users SET email = ?, display_name = COALESCE(display_name, ?) WHERE id = 1').run(adminEmail, process.env.ADMIN_USER || 'Admin');
     }
   } else {
-    // Fresh database boot: Seed user 1 with configured admin email & webhook secret
+    // Fresh database boot: Seed user 1 with configured admin credentials if available
     db.prepare(`
       INSERT INTO users (id, username, email, display_name, webhook_key)
       VALUES (1, ?, ?, ?, ?)
-    `).run(process.env.ADMIN_USER || 'radi', adminEmail, 'Anuraag Rao', defaultSecret);
+    `).run(process.env.ADMIN_USER || 'admin', adminEmail, process.env.ADMIN_USER || 'Administrator', defaultSecret);
   }
 
-  // Ensure any user matching admin email has defaultSecret
-  db.prepare('UPDATE users SET webhook_key = ? WHERE LOWER(email) = ?').run(defaultSecret, adminEmail);
+  // Ensure user matching admin email has defaultSecret
+  if (adminEmail) {
+    db.prepare('UPDATE users SET webhook_key = ? WHERE LOWER(email) = ?').run(defaultSecret, adminEmail);
+  }
 
   const usersWithoutKey = db.prepare('SELECT id, username FROM users WHERE webhook_key IS NULL').all();
   for (const u of usersWithoutKey) {
@@ -366,9 +368,9 @@ function createOrUpdateGoogleUser({ google_id, email, display_name, avatar_url }
     return getUserById(user.id);
   }
 
-  // 2. Link primary admin user (anuraag7rao@gmail.com or User 1)
-  const adminEmail = (process.env.ADMIN_EMAIL || 'anuraag7rao@gmail.com').toLowerCase();
-  if (email && email.toLowerCase() === adminEmail) {
+  // 2. Link primary admin user
+  const adminEmail = process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.toLowerCase() : null;
+  if (adminEmail && email && email.toLowerCase() === adminEmail) {
     const adminUser = getUserById(1);
     if (adminUser) {
       db.prepare(`
@@ -406,9 +408,9 @@ function createOrUpdateGoogleUser({ google_id, email, display_name, avatar_url }
     username = `${usernameBase}_${counter++}`;
   }
 
-  const defaultSecret = process.env.WEBHOOK_SECRET || 'vw_sec_633b4856c45db954db91ef365de93019';
+  const defaultSecret = process.env.WEBHOOK_SECRET || generateWebhookKey();
   const webhookKey =
-    email && email.toLowerCase() === adminEmail ? defaultSecret : generateWebhookKey();
+    adminEmail && email && email.toLowerCase() === adminEmail ? defaultSecret : generateWebhookKey();
   const unusablePassword = `oauth_disabled_${crypto.randomBytes(16).toString('hex')}`;
   const res = db
     .prepare(`
@@ -421,8 +423,8 @@ function createOrUpdateGoogleUser({ google_id, email, display_name, avatar_url }
 }
 
 function createOrUpdateFirebaseUser({ firebase_uid, email, display_name, avatar_url }) {
-  const adminEmail = (process.env.ADMIN_EMAIL || 'anuraag7rao@gmail.com').toLowerCase();
-  const defaultSecret = process.env.WEBHOOK_SECRET || 'vw_sec_633b4856c45db954db91ef365de93019';
+  const adminEmail = process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.toLowerCase() : null;
+  const defaultSecret = process.env.WEBHOOK_SECRET || generateWebhookKey();
 
   // 1. Check if user already exists by firebase_uid
   let user = getUserByFirebaseUid(firebase_uid);
@@ -438,8 +440,8 @@ function createOrUpdateFirebaseUser({ firebase_uid, email, display_name, avatar_
     return getUserById(user.id);
   }
 
-  // 2. Link primary admin user (anuraag7rao@gmail.com or User 1)
-  if (email && email.toLowerCase() === adminEmail) {
+  // 2. Link primary admin user
+  if (adminEmail && email && email.toLowerCase() === adminEmail) {
     const adminUser = getUserById(1);
     if (adminUser) {
       db.prepare(`
@@ -480,7 +482,7 @@ function createOrUpdateFirebaseUser({ firebase_uid, email, display_name, avatar_
   }
 
   const webhookKey =
-    email && email.toLowerCase() === adminEmail ? defaultSecret : generateWebhookKey();
+    adminEmail && email && email.toLowerCase() === adminEmail ? defaultSecret : generateWebhookKey();
   const unusablePassword = `oauth_disabled_${crypto.randomBytes(16).toString('hex')}`;
   const res = db
     .prepare(`

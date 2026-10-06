@@ -13,8 +13,8 @@ Built with **Node.js, Express, SQLite (WAL mode), Tailwind CSS, and Chart.js**.
   - Every registered or Google-authenticated user receives a **dedicated, rotatable webhook secret key** (`vw_sec_...`).
   - Battery metrics, 24-hour discharge curves, cycle wear, and activity logs are strictly isolated by `user_id`.
   - User A can never inspect or alter User B's battery telemetry.
-- **Android Automation Relay (`POST` & `GET` `/api/webhook/battery`)**:
-  - Full support for **Automation by Jens Schröder** (open-source on F-Droid).
+- **Android Webhook Relay (`POST` & `GET` `/api/webhook/battery`)**:
+  - Full support for Android automation flows and webhooks.
   - Simple GET URLs require zero custom header configuration on Android.
 - **Hero Battery Metric**: Prominent battery level with Apple-style fluid fill and color coding:
   - 🟢 **Green (> 50%)**: Healthy operating band
@@ -66,18 +66,16 @@ Open **`http://localhost:3000`** in your browser and sign in with `radi` / `Admi
 
 ---
 
-## 📲 Android Automation Setup
+## 📲 Android Webhook Setup
 
-VoltWatch is optimized for open-source **Automation by Jens Schröder**. You can transmit telemetry via JSON POST or a simple GET URL.
+VoltWatch works seamlessly with any Android automation app. You can transmit telemetry via JSON POST or a simple GET URL.
 
 ---
 
-### Android Setup: Automation by Jens Schröder (Open Source / F-Droid)
-
-[**Automation** (F-Droid package `com.jens.automation2`)](https://f-droid.org/packages/com.jens.automation2/) is an open-source, privacy-focused automation app for Android.
+### Android Setup: Webhook Configuration
 
 #### 1. Setup Rule & Triggers
-Create a new Rule in Automation:
+Create a rule in your automation app:
 - **Triggers**:
   - **Battery Level**: Set trigger for percentage change or threshold transitions (e.g. `<= 20%`, `>= 80%`, `100%`).
   - **Charging State**: Trigger on **Charger Connected** and **Charger Disconnected** (AC / USB / Wireless).
