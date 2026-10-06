@@ -69,6 +69,8 @@ app.use(cookieParser());
 
 // Static assets
 app.use('/static', express.static(path.join(__dirname, 'public')));
+app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'public', 'favicon.svg')));
+app.get('/favicon.svg', (req, res) => res.sendFile(path.join(__dirname, 'public', 'favicon.svg')));
 
 // ── Auth Token Helper ──────────────────────────────────────────────────────
 function issueSessionCookie(res, user) {
