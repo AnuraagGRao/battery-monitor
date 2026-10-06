@@ -227,41 +227,72 @@
 
     </div>
 
-    <!-- ── MACRODROID SETUP GUIDE COLLAPSIBLE ── -->
+    <!-- ── ANDROID AUTOMATION SETUP GUIDE COLLAPSIBLE ── -->
     <details class="glass-card rounded-2xl overflow-hidden group">
       <summary class="px-6 py-4 flex items-center justify-between cursor-pointer group-hover:bg-white/[0.02] transition select-none">
         <div class="flex items-center gap-2 text-xs font-mono font-semibold uppercase tracking-wider text-slate-300">
           <span>📲</span>
-          <span>MacroDroid Webhook Connection Specs & Instructions</span>
+          <span>Android Automation Setup Guide (Automation by Jens Schröder &amp; MacroDroid)</span>
         </div>
         <span class="text-xs font-mono text-[#889096] group-open:rotate-180 transition-transform">▼</span>
       </summary>
       <div class="px-6 pb-6 pt-2 border-t border-white/[0.06] text-xs space-y-4">
         <p class="text-slate-400">
-          Configure MacroDroid on your Android phone to fire a POST request to your webhook endpoint whenever the battery state changes:
+          Configure an open-source rule in <strong>Automation by Jens Schröder</strong> (or MacroDroid) to transmit battery percentage and charger events to your webhook:
         </p>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-[0.75rem]">
-          <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
-            <span class="text-emerald-400 font-bold block">1. TRIGGER (MacroDroid)</span>
-            <p class="text-slate-300">• Battery Level Changes (Any change or 5% steps)</p>
-            <p class="text-slate-300">• Power Connected / Power Disconnected</p>
+        <!-- Method A: Automation by Jens Schröder -->
+        <div class="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3 font-mono text-[0.75rem]">
+          <div class="flex items-center justify-between">
+            <span class="text-emerald-400 font-bold flex items-center gap-1.5">
+              <span>🤖</span> Option A: Automation by Jens Schröder (F-Droid / Open Source)
+            </span>
+            <span class="text-[0.68rem] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Recommended FOSS</span>
           </div>
-          <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
-            <span class="text-cyan-400 font-bold block">2. ACTION (HTTP Request)</span>
-            <p class="text-slate-300">• Method: <strong>POST</strong></p>
-            <p class="text-slate-300">• URL: <span class="text-amber-300">https://your-domain/api/webhook/battery</span></p>
-            <p class="text-slate-300">• Header: <span class="text-indigo-300">X-Webhook-Secret: macrodroid_battery_secret_2026</span></p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-slate-300">
+            <div class="p-2.5 rounded-lg bg-black/30 border border-white/5 space-y-1">
+              <span class="text-white font-semibold block text-[0.7rem] uppercase text-slate-400">1. Trigger</span>
+              <p>• <strong>Battery</strong> ➔ Battery Level changed (or below/above threshold)</p>
+              <p>• <strong>Charger</strong> ➔ Connected / Disconnected</p>
+            </div>
+            <div class="p-2.5 rounded-lg bg-black/30 border border-white/5 space-y-1">
+              <span class="text-white font-semibold block text-[0.7rem] uppercase text-slate-400">2. Action</span>
+              <p>• <strong>Network</strong> ➔ <strong>HTTP Request</strong></p>
+              <p>• Method: <strong>POST</strong> (or GET)</p>
+              <p>• URL: <span class="text-amber-300">https://your-domain/api/webhook/battery</span></p>
+              <p>• Header: <span class="text-indigo-300">X-Webhook-Secret: macrodroid_battery_secret_2026</span></p>
+            </div>
+          </div>
+          <div class="p-3 rounded-lg bg-black/50 border border-white/5 text-[0.72rem] text-slate-300 overflow-x-auto">
+            <span class="text-slate-500 block mb-1">// JSON Body (or URL parameters):</span>
+            <pre>{
+  "battery_level": {battery_level},
+  "event": "{event}",
+  "time": "{now_iso}"
+}</pre>
+            <span class="text-slate-500 block mt-2">// Or simple GET Request (zero headers needed):</span>
+            <span class="text-amber-200">https://your-domain/api/webhook/battery?secret=macrodroid_battery_secret_2026&amp;level={battery_level}&amp;event=charger_connected</span>
           </div>
         </div>
 
-        <div class="p-3.5 rounded-xl bg-black/50 border border-white/10 font-mono text-[0.72rem] text-slate-300 overflow-x-auto">
-          <span class="text-slate-500 block mb-1">// JSON Body template for MacroDroid:</span>
-          <pre>{
-  "battery_level": [battery],
-  "event": "[trigger_name]",
-  "time": "[system_date_iso]"
-}</pre>
+        <!-- Method B: MacroDroid -->
+        <div class="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3 font-mono text-[0.75rem]">
+          <span class="text-cyan-400 font-bold flex items-center gap-1.5">
+            <span>⚙️</span> Option B: MacroDroid
+          </span>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-slate-300">
+            <div class="p-2.5 rounded-lg bg-black/30 border border-white/5 space-y-1">
+              <span class="text-white font-semibold block text-[0.7rem] uppercase text-slate-400">1. Trigger</span>
+              <p>• Battery / Power ➔ Battery Level Changed</p>
+              <p>• Battery / Power ➔ Power Connected / Disconnected</p>
+            </div>
+            <div class="p-2.5 rounded-lg bg-black/30 border border-white/5 space-y-1">
+              <span class="text-white font-semibold block text-[0.7rem] uppercase text-slate-400">2. Action</span>
+              <p>• HTTP Request ➔ POST JSON</p>
+              <p>• URL: <span class="text-amber-300">https://your-domain/api/webhook/battery</span></p>
+              <p>• Header: <span class="text-indigo-300">X-Webhook-Secret: macrodroid_battery_secret_2026</span></p>
+            </div>
+          </div>
         </div>
       </div>
     </details>

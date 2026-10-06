@@ -43,6 +43,7 @@ app.use(
 );
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Static assets
@@ -74,17 +75,18 @@ function requireAuth(req, res, next) {
 // ── Webhook Guard Middleware ───────────────────────────────────────────────
 function requireWebhookSecret(req, res, next) {
   const secretHeader = req.headers['x-webhook-secret'];
-  const secretQuery = req.query.secret;
+  const secretQuery = req.query ? req.query.secret : null;
+  const secretBody = req.body ? req.body.secret : null;
   const authBearer = req.headers.authorization && req.headers.authorization.startsWith('Bearer ')
     ? req.headers.authorization.slice(7)
     : null;
 
-  const providedSecret = secretHeader || secretQuery || authBearer;
+  const providedSecret = secretHeader || secretQuery || secretBody || authBearer;
 
   if (!providedSecret || providedSecret !== WEBHOOK_SECRET) {
     return res.status(401).json({
       error: 'Unauthorized',
-      message: 'Invalid or missing webhook secret header (X-Webhook-Secret)',
+      message: 'Invalid or missing webhook secret (provide via X-Webhook-Secret header, ?secret= query, or secret body property)',
     });
   }
   next();
@@ -147,40 +149,60 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   return res.json({ authenticated: true, user: req.user });
 });
 
-// ── MacroDroid Webhook Endpoint ────────────────────────────────────────────
-// Payload: { "battery_level": 85, "event": "charger_disconnected", "time": "2026-10-06T08:45:00Z" }
-app.post('/api/webhook/battery', requireWebhookSecret, (req, res) => {
-  const { battery_level, event, time } = req.body || {};
+// ── Automation (Jens Schröder) & MacroDroid Webhook Endpoint ─────────────────
+// Supports POST (JSON / form-urlencoded) & GET (URL query)
+function handleBatteryWebhook(req, res) {
+  const payload = { ...req.query, ...req.body };
 
-  // 1. Validate battery_level
-  const level = Number(battery_level);
-  if (Number.isNaN(level) || level < 0 || level > 100) {
+  // 1. Resolve battery level from flexible aliases
+  const rawLevel =
+    payload.battery_level !== undefined ? payload.battery_level :
+    payload.level !== undefined ? payload.level :
+    payload.battery !== undefined ? payload.battery :
+    payload.percent !== undefined ? payload.percent :
+    payload.pct;
+
+  const level = Number(rawLevel);
+  if (rawLevel === undefined || Number.isNaN(level) || level < 0 || level > 100) {
     return res.status(400).json({
       error: 'Invalid payload',
-      message: 'battery_level must be an integer between 0 and 100',
+      message: 'battery level must be provided as an integer between 0 and 100 (e.g. battery_level, level, percent)',
     });
   }
 
-  // 2. Normalize event name
-  const rawEvent = typeof event === 'string' ? event.trim().toLowerCase() : '';
-  const validEvents = [
-    'level_change',
-    'charger_connected',
-    'charger_disconnected',
-    'battery_full',
-    'battery_low',
-    'screen_on',
-    'screen_off',
-  ];
+  // 2. Resolve & intelligently normalize event name
+  const rawEvent =
+    payload.event !== undefined ? payload.event :
+    payload.status !== undefined ? payload.status :
+    payload.state !== undefined ? payload.state :
+    payload.type !== undefined ? payload.type :
+    payload.action;
 
-  const eventName = rawEvent && validEvents.includes(rawEvent)
-    ? rawEvent
-    : rawEvent || 'level_change';
+  let eventName = 'level_change';
+  if (typeof rawEvent === 'string') {
+    const e = rawEvent.trim().toLowerCase();
+    if (e.includes('disconn') || e.includes('unplug') || e.includes('discharg')) {
+      eventName = 'charger_disconnected';
+    } else if (e.includes('conn') || e.includes('plug') || e.includes('charg')) {
+      eventName = 'charger_connected';
+    } else if (e.includes('full') || level >= 100) {
+      eventName = 'battery_full';
+    } else if (e.includes('low') || level <= 15) {
+      eventName = 'battery_low';
+    } else if (e.includes('screen_on')) {
+      eventName = 'screen_on';
+    } else if (e.includes('screen_off')) {
+      eventName = 'screen_off';
+    } else if (e.length > 0) {
+      eventName = e.replace(/[^a-z0-9_]/g, '_').slice(0, 32);
+    }
+  }
 
-  // 3. Normalize timestamp
+  // 3. Resolve timestamp
+  const rawTime = payload.time || payload.timestamp || payload.recorded_at;
   let recordedAt;
-  if (time && !Number.isNaN(Date.parse(time))) {
-    recordedAt = new Date(time).toISOString();
+  if (rawTime && !Number.isNaN(Date.parse(rawTime))) {
+    recordedAt = new Date(rawTime).toISOString();
   } else {
     recordedAt = new Date().toISOString();
   }
@@ -200,7 +222,10 @@ app.post('/api/webhook/battery', requireWebhookSecret, (req, res) => {
     console.error('[WEBHOOK ERROR]', err);
     return res.status(500).json({ error: 'Failed to record battery telemetry' });
   }
-});
+}
+
+app.post('/api/webhook/battery', requireWebhookSecret, handleBatteryWebhook);
+app.get('/api/webhook/battery', requireWebhookSecret, handleBatteryWebhook);
 
 // ── Dashboard Analytics API (Protected) ────────────────────────────────────
 app.get('/api/battery/stats', requireAuth, (req, res) => {

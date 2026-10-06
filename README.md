@@ -59,17 +59,61 @@ Open **`http://localhost:3000`** in your browser and sign in with `radi` / `Admi
 
 ---
 
-## 📲 MacroDroid Android Configuration
+## 📲 Android Automation Setup
+
+VoltWatch supports both open-source automation apps and MacroDroid. You can transmit telemetry via JSON POST or a simple GET URL.
+
+---
+
+### Option A: Automation by Jens Schröder (Open Source / F-Droid)
+
+[**Automation** (F-Droid package `com.jens.automation2`)](https://f-droid.org/packages/com.jens.automation2/) is an open-source, privacy-focused automation app for Android.
+
+#### 1. Setup Rule & Triggers
+Create a new Rule in Automation:
+- **Triggers**:
+  - **Battery Level**: Set trigger for percentage change or threshold transitions (e.g. `<= 20%`, `>= 80%`, `100%`).
+  - **Charging State**: Trigger on **Charger Connected** and **Charger Disconnected** (AC / USB / Wireless).
+
+#### 2. Action (HTTP Request)
+Add an **HTTP Request** action. You can use either method:
+
+##### Method 1: Simple GET Request (Easiest — Zero Custom Headers Needed)
+- **Method**: `GET`
+- **URL**:
+  ```text
+  https://your-domain.com/api/webhook/battery?secret=macrodroid_battery_secret_2026&level={battery_level}&event=charger_connected
+  ```
+  *(VoltWatch automatically extracts the secret query parameter, maps `level` to the battery reading, and parses the event).*
+
+##### Method 2: POST Request (JSON)
+- **Method**: `POST`
+- **URL**: `https://your-domain.com/api/webhook/battery`
+- **Headers**:
+  - `Content-Type`: `application/json`
+  - `X-Webhook-Secret`: `macrodroid_battery_secret_2026`
+- **Payload**:
+  ```json
+  {
+    "battery_level": {battery_level},
+    "event": "{event}",
+    "time": "{now_iso}"
+  }
+  ```
+
+---
+
+### Option B: MacroDroid
 
 In the MacroDroid app on your Android phone, create a new Macro:
 
-### 1. Triggers
+#### 1. Triggers
 Add the following triggers:
 - **Battery / Power** ➔ **Battery Level Changed** ➔ Select *Any change* (or *Increases/Decreases by 5%*)
 - **Battery / Power** ➔ **Power Connected**
 - **Battery / Power** ➔ **Power Disconnected**
 
-### 2. Action (HTTP Request)
+#### 2. Action (HTTP Request)
 - **Request Type**: `POST`
 - **URL**: `https://your-domain.com/api/webhook/battery`
 - **Content Type**: `application/json`
@@ -84,7 +128,7 @@ Add the following triggers:
 }
 ```
 
-> **Note:** MacroDroid will automatically substitute `[battery]` with the integer percentage (e.g. `85`), `[trigger_name]` with the event (e.g. `Power Connected`), and `[system_date_iso]` with the current ISO-8601 timestamp.
+> **Note:** MacroDroid automatically substitutes `[battery]` with the integer percentage (e.g. `85`), `[trigger_name]` with the event (e.g. `Power Connected`), and `[system_date_iso]` with the ISO-8601 timestamp.
 
 ---
 
