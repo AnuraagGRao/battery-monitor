@@ -59,6 +59,7 @@ if (getUserCount() === 0) {
 app.use(
   helmet({
     contentSecurityPolicy: false, // Allows CDN resources (Tailwind, Chart.js, Firebase, Google Fonts)
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }, // Allows Firebase/Google Sign-In popups to maintain opener bridge
   })
 );
 app.use(cors());
