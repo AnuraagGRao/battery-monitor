@@ -1,0 +1,7 @@
+node_modules/
+.env
+battery.db
+battery.db-wal
+battery.db-shm
+.DS_Store
+Thumbs.db

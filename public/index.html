@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>VoltWatch · Battery Health & Charging Habits</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/custom.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-screen font-sans p-4 sm:p-6 lg:p-8 flex flex-col justify-between selection:bg-emerald-500/20">
+
+  <!-- Main Dashboard Container -->
+  <div class="max-w-6xl mx-auto w-full space-y-6">
+
+    <!-- ── NAVIGATION BAR ── -->
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-400 via-teal-400 to-cyan-500 flex items-center justify-center font-bold text-black text-xl shadow-lg shadow-emerald-500/20">
+          ⚡
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-extrabold tracking-tight text-[#ECEDEE]">VoltWatch</h1>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[0.65rem] font-mono uppercase font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live Telemetry
+            </span>
+          </div>
+          <p class="text-xs text-[#889096]">Android Battery Health & Charging Console</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <!-- Live status indicator -->
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs font-mono text-[#889096]">
+          <span class="text-[0.68rem] text-slate-400">Webhook:</span>
+          <span class="text-emerald-400 font-semibold">Active</span>
+        </div>
+
+        <!-- Simulate Event Modal Trigger -->
+        <button
+          id="open-sim-btn"
+          class="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-white/[0.06] hover:bg-white/[0.12] border border-white/12 text-[#ECEDEE] transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+          title="Simulate mock MacroDroid webhook payload"
+        >
+          <span>🧪</span>
+          <span>Test Webhook</span>
+        </button>
+
+        <!-- Manual Refresh -->
+        <button
+          id="refresh-btn"
+          class="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-white/[0.06] hover:bg-white/[0.12] border border-white/12 text-[#ECEDEE] transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+          title="Force refresh data"
+        >
+          <span id="refresh-icon">↻</span>
+          <span>Refresh</span>
+        </button>
+
+        <!-- Logout -->
+        <button
+          id="logout-btn"
+          class="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 transition cursor-pointer"
+        >
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <!-- ── TOP BENTO METRICS ── -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+      <!-- 1. HERO STAT: CURRENT BATTERY PERCENTAGE -->
+      <div class="glass-card rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-mono uppercase tracking-wider text-[#889096]">Current Level</span>
+          <div id="charging-badge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-white/10 text-white">
+            <span id="charging-icon">🔋</span>
+            <span id="charging-text">Checking...</span>
+          </div>
+        </div>
+
+        <div class="my-4 flex items-baseline gap-3">
+          <span id="hero-percent" class="text-6xl font-extrabold tracking-tight font-mono text-emerald-400">
+            --%
+          </span>
+          <div class="flex flex-col">
+            <span id="hero-status-desc" class="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              Synced
+            </span>
+            <span id="hero-updated-at" class="text-[0.7rem] font-mono text-[#889096]">
+              --:--:--
+            </span>
+          </div>
+        </div>
+
+        <!-- Dynamic Liquid Battery Bar -->
+        <div class="battery-meter-container">
+          <div id="battery-fill" class="battery-meter-fill bg-emerald-400 text-emerald-400" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- 2. DAILY INSIGHTS: CHARGE CYCLES TODAY -->
+      <div class="glass-card rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-mono uppercase tracking-wider text-[#889096]">Today's Charge Cycles</span>
+          <span class="text-[0.68rem] font-mono px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-bold">
+            24h Window
+          </span>
+        </div>
+
+        <div class="my-3">
+          <div class="flex items-baseline gap-2">
+            <span id="cycle-count" class="text-5xl font-extrabold tracking-tight font-mono text-white">
+              0.00
+            </span>
+            <span class="text-xs font-mono text-slate-400">cycles</span>
+          </div>
+          <p class="text-xs text-[#889096] mt-1.5 leading-relaxed">
+            Calculated as cumulative recharge % / 100. Lithium wear is lowest when keeping cycles between 20% and 80%.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-2.5 border-t border-white/[0.06] text-xs font-mono">
+          <div>
+            <span class="text-[#889096] text-[0.68rem] block">MIN / MAX TODAY</span>
+            <span id="min-max-today" class="text-white font-semibold">--% / --%</span>
+          </div>
+          <div>
+            <span class="text-[#889096] text-[0.68rem] block">PLUG-IN SESSIONS</span>
+            <span id="sessions-count" class="text-emerald-400 font-semibold">0 times</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. LAST EVENT & TELEMETRY HEALTH -->
+      <div class="glass-card rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-mono uppercase tracking-wider text-[#889096]">Last Triggered Event</span>
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 live-dot"></span>
+        </div>
+
+        <div class="my-3">
+          <div id="last-event-name" class="text-xl font-bold text-white capitalize flex items-center gap-2">
+            <span id="last-event-icon">⚡</span>
+            <span>Waiting for ping...</span>
+          </div>
+          <div id="last-event-time" class="text-xs font-mono text-[#889096] mt-1">
+            Listening on MacroDroid webhook
+          </div>
+        </div>
+
+        <div class="pt-2.5 border-t border-white/[0.06] flex items-center justify-between text-xs font-mono">
+          <span class="text-[#889096]">Auto-Refresh:</span>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span class="text-slate-300">Every 30s</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── MAIN ANALYTICS SECTION ── -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+      <!-- 24H BATTERY CURVE TIMELINE (2 COLS) -->
+      <div class="glass-card rounded-3xl p-6 lg:col-span-2 flex flex-col justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <span>Battery Discharge & Recharge Curve</span>
+            </h2>
+            <p class="text-xs text-[#889096]">Continuous percentage plot over the requested duration</p>
+          </div>
+
+          <!-- Time Range Selector Buttons -->
+          <div class="inline-flex rounded-xl bg-white/[0.04] p-1 border border-white/10 text-xs font-mono">
+            <button class="range-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer" data-hours="6">6H</button>
+            <button class="range-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer" data-hours="12">12H</button>
+            <button class="range-btn px-2.5 py-1 rounded-lg bg-emerald-500 text-black font-bold shadow transition cursor-pointer" data-hours="24">24H</button>
+            <button class="range-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer" data-hours="72">3D</button>
+            <button class="range-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer" data-hours="168">7D</button>
+          </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="relative w-full h-[320px]">
+          <canvas id="batteryChart"></canvas>
+        </div>
+      </div>
+
+      <!-- ACTIVITY FEED LOG (1 COL) -->
+      <div class="glass-card rounded-3xl p-6 flex flex-col">
+        <div class="flex items-center justify-between pb-3 border-b border-white/[0.06] mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-sm">📋</span>
+            <h2 class="text-base font-bold text-white">Activity Feed</h2>
+          </div>
+          <span id="feed-count-badge" class="text-xs font-mono text-[#889096]">0 events</span>
+        </div>
+
+        <div id="activity-feed" class="space-y-2.5 overflow-y-auto max-h-[340px] custom-scroll pr-1">
+          <!-- Populated dynamically via JS -->
+          <div class="text-center py-10 text-xs font-mono text-slate-500">
+            Fetching telemetry logs...
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── MACRODROID SETUP GUIDE COLLAPSIBLE ── -->
+    <details class="glass-card rounded-2xl overflow-hidden group">
+      <summary class="px-6 py-4 flex items-center justify-between cursor-pointer group-hover:bg-white/[0.02] transition select-none">
+        <div class="flex items-center gap-2 text-xs font-mono font-semibold uppercase tracking-wider text-slate-300">
+          <span>📲</span>
+          <span>MacroDroid Webhook Connection Specs & Instructions</span>
+        </div>
+        <span class="text-xs font-mono text-[#889096] group-open:rotate-180 transition-transform">▼</span>
+      </summary>
+      <div class="px-6 pb-6 pt-2 border-t border-white/[0.06] text-xs space-y-4">
+        <p class="text-slate-400">
+          Configure MacroDroid on your Android phone to fire a POST request to your webhook endpoint whenever the battery state changes:
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-[0.75rem]">
+          <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
+            <span class="text-emerald-400 font-bold block">1. TRIGGER (MacroDroid)</span>
+            <p class="text-slate-300">• Battery Level Changes (Any change or 5% steps)</p>
+            <p class="text-slate-300">• Power Connected / Power Disconnected</p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
+            <span class="text-cyan-400 font-bold block">2. ACTION (HTTP Request)</span>
+            <p class="text-slate-300">• Method: <strong>POST</strong></p>
+            <p class="text-slate-300">• URL: <span class="text-amber-300">https://your-domain/api/webhook/battery</span></p>
+            <p class="text-slate-300">• Header: <span class="text-indigo-300">X-Webhook-Secret: macrodroid_battery_secret_2026</span></p>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-black/50 border border-white/10 font-mono text-[0.72rem] text-slate-300 overflow-x-auto">
+          <span class="text-slate-500 block mb-1">// JSON Body template for MacroDroid:</span>
+          <pre>{
+  "battery_level": [battery],
+  "event": "[trigger_name]",
+  "time": "[system_date_iso]"
+}</pre>
+        </div>
+      </div>
+    </details>
+
+  </div>
+
+  <!-- ── TEST WEBHOOK SIMULATOR MODAL ── -->
+  <div id="sim-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md hidden animate-in fade-in">
+    <div class="glass-card max-w-md w-full p-6 rounded-3xl space-y-5 border border-white/15">
+      <div class="flex items-center justify-between pb-3 border-b border-white/10">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🧪</span>
+          <h3 class="text-base font-bold text-white">Webhook Signal Simulator</h3>
+        </div>
+        <button id="close-sim-btn" class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer">
+          ✕
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400">
+        Simulate an incoming MacroDroid POST request without needing your phone right now.
+      </p>
+
+      <form id="sim-form" class="space-y-4">
+        <div>
+          <label class="block text-[0.7rem] font-mono uppercase tracking-wider text-slate-400 mb-1.5">
+            Battery Percentage (0 - 100)
+          </label>
+          <div class="flex items-center gap-3">
+            <input type="range" id="sim-slider" min="0" max="100" value="85" class="flex-1 accent-emerald-400 cursor-pointer">
+            <span id="sim-level-val" class="font-mono font-bold text-emerald-400 w-12 text-right">85%</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[0.7rem] font-mono uppercase tracking-wider text-slate-400 mb-1.5">
+            Event Type
+          </label>
+          <select id="sim-event-select" class="w-full bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-emerald-400">
+            <option value="level_change">level_change (Standard Drop/Rise)</option>
+            <option value="charger_connected">charger_connected (Plugged In)</option>
+            <option value="charger_disconnected">charger_disconnected (Unplugged)</option>
+            <option value="battery_full">battery_full (Charged to 100%)</option>
+            <option value="battery_low">battery_low (Dropped below 20%)</option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          class="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 text-black font-bold text-xs uppercase tracking-wider hover:opacity-95 transition cursor-pointer shadow-lg shadow-emerald-500/20"
+        >
+          Send Simulated Signal
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <footer class="mt-8 text-center text-xs font-mono text-[#889096]/70">
+    VoltWatch · Protected Hardware Battery Telemetry · Designed for Android + MacroDroid
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

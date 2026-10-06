@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign In · VoltWatch</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/custom.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+  <div class="glass-card max-w-sm w-full p-8 rounded-3xl space-y-6 relative overflow-hidden">
+    <!-- Top accent bar -->
+    <div class="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-emerald-400 via-cyan-400 to-indigo-500"></div>
+
+    <div class="text-center space-y-2 pt-2">
+      <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-400 flex items-center justify-center font-bold text-black text-2xl shadow-lg shadow-emerald-500/25">
+        ⚡
+      </div>
+      <h1 class="text-2xl font-extrabold text-[#ECEDEE] tracking-tight">VoltWatch</h1>
+      <p class="text-xs text-[#889096]">Private Android Battery Health Console</p>
+    </div>
+
+    <form id="login-form" class="space-y-4">
+      <div>
+        <label for="username" class="block text-[0.7rem] font-mono uppercase tracking-wider text-[#889096] mb-1.5">
+          Username
+        </label>
+        <input
+          type="text"
+          id="username"
+          required
+          autocomplete="username"
+          placeholder="radi"
+          class="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-[#ECEDEE] placeholder:text-white/20 focus:outline-none focus:border-emerald-400 transition"
+        />
+      </div>
+
+      <div>
+        <label for="password" class="block text-[0.7rem] font-mono uppercase tracking-wider text-[#889096] mb-1.5">
+          Password
+        </label>
+        <input
+          type="password"
+          id="password"
+          required
+          autocomplete="current-password"
+          placeholder="••••••••••••"
+          class="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-[#ECEDEE] placeholder:text-white/20 focus:outline-none focus:border-emerald-400 transition"
+        />
+      </div>
+
+      <div id="error-alert" class="hidden p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-xs text-rose-300">
+        <!-- Error text inserted via JS -->
+      </div>
+
+      <button
+        type="submit"
+        id="submit-btn"
+        class="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 text-black font-bold text-xs uppercase tracking-wider hover:opacity-95 active:scale-[0.98] transition cursor-pointer shadow-lg shadow-emerald-500/20"
+      >
+        Authenticate Session
+      </button>
+    </form>
+
+    <div class="text-center pt-2 border-t border-white/[0.06]">
+      <span class="text-[0.68rem] font-mono text-[#889096]/70">
+        MacroDroid Telemetry Relay · UTC+5:30
+      </span>
+    </div>
+  </div>
+
+  <script src="/static/js/login.js"></script>
+</body>
+</html>
