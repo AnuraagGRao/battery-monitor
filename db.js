@@ -441,10 +441,20 @@ function getUserCount() {
   return row ? row.count : 0;
 }
 
+function updateBatteryLog(id, battery_level, event, recorded_at) {
+  db.prepare(`
+    UPDATE battery_logs
+    SET battery_level = ?, event = ?, recorded_at = ?
+    WHERE id = ?
+  `).run(battery_level, event, recorded_at, id);
+  return db.prepare(`SELECT * FROM battery_logs WHERE id = ?`).get(id);
+}
+
 module.exports = {
   db,
   generateWebhookKey,
   insertBatteryLog,
+  updateBatteryLog,
   getLatestLog,
   getTimeline,
   getActivityFeed,
@@ -462,3 +472,4 @@ module.exports = {
   regenerateWebhookKey,
   getUserCount,
 };
+

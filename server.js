@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken');
 
 const {
   insertBatteryLog,
+  updateBatteryLog,
   getLatestLog,
   getTimeline,
   getActivityFeed,
@@ -525,9 +526,50 @@ function handleBatteryWebhook(req, res) {
   }
 
   try {
+    const roundedLevel = Math.round(level);
+    const latest = getLatestLog(user.id);
+    const nowMs = Date.now();
+    const latestMs = latest && latest.recorded_at ? new Date(latest.recorded_at).getTime() : 0;
+    // Detect burst cascades (concurrent webhook executions within a 20-second window)
+    const isBurst = latest && Math.abs(nowMs - latestMs) < 20000;
+
+    if (isBurst && eventName !== 'charger_connected') {
+      // 1. If disconnect arrives in a burst with higher level, keep true lower level
+      if (eventName === 'charger_disconnected' && roundedLevel > latest.battery_level) {
+        const updated = updateBatteryLog(latest.id, latest.battery_level, 'charger_disconnected', recordedAt);
+        return res.status(200).json({
+          success: true,
+          message: 'Preserved lower battery level for disconnect event',
+          user_id: user.id,
+          data: updated,
+        });
+      }
+
+      // 2. Reject upward jumps during burst while discharging (e.g. 95% hitting after 80% when phone is at 77%)
+      if (roundedLevel > latest.battery_level) {
+        return res.status(200).json({
+          success: true,
+          message: 'Cascading threshold echo ignored (preserved lower reading)',
+          user_id: user.id,
+          data: latest,
+        });
+      }
+
+      // 3. Deeper threshold reached in same burst (e.g. 85% arrived first, then 80% arrived)
+      if (roundedLevel < latest.battery_level && latest.event === 'level_change') {
+        const updated = updateBatteryLog(latest.id, roundedLevel, eventName, recordedAt);
+        return res.status(200).json({
+          success: true,
+          message: 'Updated burst to deeper threshold',
+          user_id: user.id,
+          data: updated,
+        });
+      }
+    }
+
     const record = insertBatteryLog({
       user_id: user.id,
-      battery_level: Math.round(level),
+      battery_level: roundedLevel,
       event: eventName,
       recorded_at: recordedAt,
     });
