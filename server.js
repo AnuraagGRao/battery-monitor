@@ -533,6 +533,7 @@ function handleBatteryWebhook(req, res) {
     const nowMs = Date.now();
     const latestMs = latest && latest.recorded_at ? new Date(latest.recorded_at).getTime() : 0;
     // Detect burst cascades (concurrent webhook executions within a 20-second window)
+    const isBurst = latest && Math.abs(nowMs - latestMs) < 20000;
     const isChargingState = getIsCharging(user.id);
     const incomingCharging =
       eventName === 'charger_connected' ||
