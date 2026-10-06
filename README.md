@@ -156,7 +156,32 @@ Add the following triggers:
 
 ## 🛠️ Production Deployment
 
-### Option A: Using PM2
+### Option A: Render (Zero Configuration · Free Cloud Hosting)
+
+VoltWatch includes a native `render.yaml` Blueprint file for automatic deployment to [Render](https://render.com):
+
+1. Go to your **[Render Dashboard](https://dashboard.render.com)**.
+2. Click **New +** ➔ **Blueprint**.
+3. Connect your GitHub repository: `AnuraagGRao/battery-monitor`.
+4. Render will automatically detect `render.yaml`, configure the Node service, inject your Firebase keys, and deploy.
+5. Your public HTTPS webhook URL will be:
+   ```text
+   https://voltwatch-battery-monitor.onrender.com/api/webhook/battery
+   ```
+
+*(Optional: In your GitHub repo Settings ➔ Secrets, add `RENDER_DEPLOY_HOOK_URL` to trigger automatic redeploys on every commit).*
+
+---
+
+### Option B: Docker Container
+```bash
+docker build -t voltwatch .
+docker run -d -p 3000:3000 --env-file .env -v $(pwd)/data:/app/data voltwatch
+```
+
+---
+
+### Option C: Using PM2 (Self-Hosted VPS / Raspberry Pi)
 ```bash
 npm install -g pm2
 pm2 start server.js --name "voltwatch"
@@ -164,10 +189,10 @@ pm2 save
 pm2 startup
 ```
 
-### Option B: Caddy Reverse Proxy (Recommended for HTTPS)
+### Option D: Caddy Reverse Proxy (Recommended for VPS HTTPS)
 ```caddy
 volt.yourdomain.com {
     reverse_proxy localhost:3000
 }
 ```
-*(Caddy automatically provisions free Let's Encrypt SSL certificates for MacroDroid HTTPS delivery).*
+*(Caddy automatically provisions free Let's Encrypt SSL certificates for Android HTTPS delivery).*

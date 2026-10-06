@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: voltwatch-battery-monitor
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: WEBHOOK_SECRET
+        value: macrodroid_battery_secret_2026
+      - key: ADMIN_USER
+        value: radi
+      - key: ADMIN_PASS
+        value: Admin@12345
+      - key: FIREBASE_API_KEY
+        value: AIzaSyAUePvwQRbs7CjEu8EuHusbHvJfnZW1imM
+      - key: FIREBASE_AUTH_DOMAIN
+        value: battery-monitor-7.firebaseapp.com
+      - key: FIREBASE_PROJECT_ID
+        value: battery-monitor-7
+      - key: FIREBASE_STORAGE_BUCKET
+        value: battery-monitor-7.firebasestorage.app
+      - key: FIREBASE_MESSAGING_SENDER_ID
+        value: "962645603414"
+      - key: FIREBASE_APP_ID
+        value: "1:962645603414:web:3df3d357f5cae1ebb6f7f7"
+      - key: FIREBASE_MEASUREMENT_ID
+        value: G-EJ4GFB8Q26

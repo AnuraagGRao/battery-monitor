@@ -1,0 +1,47 @@
+name: CI & Render Deploy
+
+on:
+  push:
+    branches: ['main']
+  workflow_dispatch:
+
+concurrency:
+  group: 'deploy'
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test & Verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Verify Database Initialization
+        run: node -e "require('./db.js'); console.log('VoltWatch database schema & migrations verified successfully.');"
+
+  deploy:
+    name: Trigger Render Deployment
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook (if secret configured)
+        env:
+          HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$HOOK_URL" ]; then
+            echo "Triggering Render auto-deployment via webhook..."
+            curl -s -X POST "$HOOK_URL"
+            echo "Render deploy hook triggered successfully!"
+          else
+            echo "RENDER_DEPLOY_HOOK_URL not configured. Render will deploy automatically if Git repo is connected."
+          fi
