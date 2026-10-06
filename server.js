@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const crypto = require('crypto');
 const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
@@ -117,6 +118,14 @@ function requireAuth(req, res, next) {
   }
 }
 
+function safeStringCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 // ── Multi-User Webhook Guard Middleware ────────────────────────────────────
 function requireWebhookSecret(req, res, next) {
   const secretHeader = req.headers['x-webhook-secret'];
@@ -143,8 +152,8 @@ function requireWebhookSecret(req, res, next) {
     return next();
   }
 
-  // 2. Fallback check for global server secret
-  if (providedSecret === GLOBAL_WEBHOOK_SECRET) {
+  // 2. Fallback check for global server secret (timing-safe)
+  if (safeStringCompare(providedSecret, GLOBAL_WEBHOOK_SECRET)) {
     const targetUsername = req.query?.user || req.body?.user || req.query?.username;
     if (targetUsername) {
       const u = getUserByUsername(targetUsername);
@@ -211,7 +220,12 @@ app.post('/api/auth/firebase', async (req, res) => {
   }
 
   try {
-    // If Firebase API key is configured, verify with Google Identity Toolkit
+    // If Firebase API key is configured, cryptographically verify with Google Identity Toolkit
+    let verifiedUid = uid;
+    let verifiedEmail = email;
+    let verifiedName = displayName;
+    let verifiedPhoto = photoURL;
+
     if (FIREBASE_API_KEY) {
       const verifyRes = await fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
@@ -223,15 +237,27 @@ app.post('/api/auth/firebase', async (req, res) => {
       );
 
       if (!verifyRes.ok) {
-        console.warn('[AUTH] Firebase token verification returned non-200');
+        return res.status(401).json({ error: 'Invalid or expired Firebase credential token' });
       }
+
+      const verifyData = await verifyRes.json();
+      const verifiedUser = verifyData.users?.[0];
+      if (!verifiedUser || verifiedUser.localId !== uid) {
+        return res.status(401).json({ error: 'Firebase account verification mismatch' });
+      }
+
+      // Enforce Google-verified identity claims
+      verifiedUid = verifiedUser.localId;
+      verifiedEmail = verifiedUser.email || verifiedEmail;
+      verifiedName = verifiedUser.displayName || verifiedName;
+      verifiedPhoto = verifiedUser.photoUrl || verifiedPhoto;
     }
 
     const user = createOrUpdateFirebaseUser({
-      firebase_uid: uid,
-      email: email || null,
-      display_name: displayName || (email ? email.split('@')[0] : 'User'),
-      avatar_url: photoURL || null,
+      firebase_uid: verifiedUid,
+      email: verifiedEmail || null,
+      display_name: verifiedName || (verifiedEmail ? verifiedEmail.split('@')[0] : 'User'),
+      avatar_url: verifiedPhoto || null,
     });
 
     issueSessionCookie(res, user);
