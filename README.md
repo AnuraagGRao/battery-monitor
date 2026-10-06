@@ -1,6 +1,6 @@
 # ⚡ VoltWatch — Android Battery Telemetry & Charging Health Dashboard
 
-A self-hosted, private web console designed to monitor Android device battery health, discharge curves, and charging habits using MacroDroid webhooks.
+A self-hosted, private web console designed to monitor Android device battery health, discharge curves, and charging habits using Automation webhooks.
 
 Built with **Node.js, Express, SQLite (WAL mode), Tailwind CSS, and Chart.js**.
 
@@ -8,13 +8,13 @@ Built with **Node.js, Express, SQLite (WAL mode), Tailwind CSS, and Chart.js**.
 
 ## 🌟 Key Features
 
-- **Google Sign-In with Firebase**: One-click authentication using Google accounts via Firebase Auth alongside classic administrator credentials.
+- **Google Sign-In with Firebase**: One-click authentication using Google accounts via Firebase Auth.
 - **Strict Per-User Privacy & Data Isolation**:
   - Every registered or Google-authenticated user receives a **dedicated, rotatable webhook secret key** (`vw_sec_...`).
   - Battery metrics, 24-hour discharge curves, cycle wear, and activity logs are strictly isolated by `user_id`.
   - User A can never inspect or alter User B's battery telemetry.
-- **Android Automation & MacroDroid Relay (`POST` & `GET` `/api/webhook/battery`)**:
-  - Full support for **Automation by Jens Schröder** (open-source on F-Droid) and **MacroDroid**.
+- **Android Automation Relay (`POST` & `GET` `/api/webhook/battery`)**:
+  - Full support for **Automation by Jens Schröder** (open-source on F-Droid).
   - Simple GET URLs require zero custom header configuration on Android.
 - **Hero Battery Metric**: Prominent battery level with Apple-style fluid fill and color coding:
   - 🟢 **Green (> 50%)**: Healthy operating band
@@ -46,8 +46,8 @@ Default parameters in `.env`:
 ```env
 PORT=3000
 JWT_SECRET=super_secret_voltwatch_jwt_key_2026_change_in_production
-WEBHOOK_SECRET=macrodroid_battery_secret_2026
-ADMIN_USER=radi
+WEBHOOK_SECRET=vw_sec_YOUR_SECRET_KEY
+ADMIN_EMAIL=anuraag7rao@gmail.com
 ADMIN_PASS=Admin@12345
 ```
 
@@ -68,11 +68,11 @@ Open **`http://localhost:3000`** in your browser and sign in with `radi` / `Admi
 
 ## 📲 Android Automation Setup
 
-VoltWatch supports both open-source automation apps and MacroDroid. You can transmit telemetry via JSON POST or a simple GET URL.
+VoltWatch is optimized for open-source **Automation by Jens Schröder**. You can transmit telemetry via JSON POST or a simple GET URL.
 
 ---
 
-### Option A: Automation by Jens Schröder (Open Source / F-Droid)
+### Android Setup: Automation by Jens Schröder (Open Source / F-Droid)
 
 [**Automation** (F-Droid package `com.jens.automation2`)](https://f-droid.org/packages/com.jens.automation2/) is an open-source, privacy-focused automation app for Android.
 
@@ -89,7 +89,7 @@ Add an **HTTP Request** action. You can use either method:
 - **Method**: `GET`
 - **URL**:
   ```text
-  https://your-domain.com/api/webhook/battery?secret=macrodroid_battery_secret_2026&level={battery_level}&event=charger_connected
+  https://your-domain.com/api/webhook/battery?secret=YOUR_SECRET_KEY&level={battery_level}&event=charger_connected
   ```
   *(VoltWatch automatically extracts the secret query parameter, maps `level` to the battery reading, and parses the event).*
 
@@ -98,44 +98,15 @@ Add an **HTTP Request** action. You can use either method:
 - **URL**: `https://your-domain.com/api/webhook/battery`
 - **Headers**:
   - `Content-Type`: `application/json`
-  - `X-Webhook-Secret`: `macrodroid_battery_secret_2026`
+  - `X-Webhook-Secret`: `YOUR_SECRET_KEY`
 - **Payload**:
   ```json
   {
-    "battery_level": {battery_level},
-    "event": "{event}",
-    "time": "{now_iso}"
+    "battery_level": 75,
+    "event": "level_change",
+    "time": "2026-10-06T16:00:00Z"
   }
   ```
-
----
-
-### Option B: MacroDroid
-
-In the MacroDroid app on your Android phone, create a new Macro:
-
-#### 1. Triggers
-Add the following triggers:
-- **Battery / Power** ➔ **Battery Level Changed** ➔ Select *Any change* (or *Increases/Decreases by 5%*)
-- **Battery / Power** ➔ **Power Connected**
-- **Battery / Power** ➔ **Power Disconnected**
-
-#### 2. Action (HTTP Request)
-- **Request Type**: `POST`
-- **URL**: `https://your-domain.com/api/webhook/battery`
-- **Content Type**: `application/json`
-- **Headers**:
-  - `X-Webhook-Secret`: `macrodroid_battery_secret_2026`
-- **Body**:
-```json
-{
-  "battery_level": [battery],
-  "event": "[trigger_name]",
-  "time": "[system_date_iso]"
-}
-```
-
-> **Note:** MacroDroid automatically substitutes `[battery]` with the integer percentage (e.g. `85`), `[trigger_name]` with the event (e.g. `Power Connected`), and `[system_date_iso]` with the ISO-8601 timestamp.
 
 ---
 
@@ -150,7 +121,7 @@ Add the following triggers:
    - All frontend API routes (`/api/battery/*`) require a valid JWT cookie.
 3. **Database Concurrency**:
    - SQLite configured with `PRAGMA journal_mode = WAL` and `PRAGMA synchronous = NORMAL`.
-   - Thread-safe and non-blocking under simultaneous MacroDroid webhooks and dashboard reads.
+   - Thread-safe and non-blocking under simultaneous incoming webhooks and dashboard reads.
 
 ---
 

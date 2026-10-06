@@ -80,8 +80,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Static assets
-app.use('/static', express.static(path.join(__dirname, 'public')));
+// Static assets with cache-prevention headers for instant live updates
+app.use(
+  '/static',
+  (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+  },
+  express.static(path.join(__dirname, 'public'))
+);
 app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'public', 'favicon.svg')));
 app.get('/favicon.svg', (req, res) => res.sendFile(path.join(__dirname, 'public', 'favicon.svg')));
 
@@ -457,7 +466,7 @@ app.post('/api/user/set-webhook-key', requireAuth, (req, res) => {
   res.json({ success: true, webhook_key: cleanKey });
 });
 
-// ── Automation (Jens Schröder) & MacroDroid Webhook Ingestion ───────────────
+// ── Automation (by Jens Schröder) Webhook Ingestion ─────────────────────────
 // Isolated per user based on personal webhook key
 function handleBatteryWebhook(req, res) {
   const payload = { ...req.query, ...req.body };
