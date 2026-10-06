@@ -143,6 +143,48 @@ function getLatestLog(userId = 1) {
   );
 }
 
+function getIsCharging(userId = 1) {
+  // 1. Check most recent explicit charger connect/disconnect event
+  const lastPower = db
+    .prepare(`
+      SELECT event, battery_level, recorded_at
+      FROM battery_logs
+      WHERE user_id = ? AND event IN ('charger_connected', 'charger_disconnected')
+      ORDER BY recorded_at DESC
+      LIMIT 1
+    `)
+    .get(userId);
+
+  if (lastPower && lastPower.event === 'charger_connected') {
+    const latest = getLatestLog(userId);
+    // If phone hasn't experienced a noticeable discharge drop, it's still plugged in
+    if (!latest || latest.battery_level >= lastPower.battery_level - 2) {
+      return true;
+    }
+  }
+
+  // 2. Fallback: upward trajectory (battery level climbing across recent logs)
+  const recentLogs = db
+    .prepare(`
+      SELECT battery_level, recorded_at
+      FROM battery_logs
+      WHERE user_id = ?
+      ORDER BY recorded_at DESC
+      LIMIT 4
+    `)
+    .all(userId);
+
+  if (recentLogs.length >= 2) {
+    const latestLevel = recentLogs[0].battery_level;
+    const oldestInBatch = recentLogs[recentLogs.length - 1].battery_level;
+    if (latestLevel > oldestInBatch) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function getTimeline(userId = 1, hours = 24) {
   const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
   return db
@@ -465,6 +507,7 @@ module.exports = {
   updateBatteryLog,
   clearBatteryLogs,
   getLatestLog,
+  getIsCharging,
   getTimeline,
   getActivityFeed,
   getDailyStats,

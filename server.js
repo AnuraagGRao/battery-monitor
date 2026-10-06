@@ -14,6 +14,7 @@ const {
   updateBatteryLog,
   clearBatteryLogs,
   getLatestLog,
+  getIsCharging,
   getTimeline,
   getActivityFeed,
   getDailyStats,
@@ -532,9 +533,21 @@ function handleBatteryWebhook(req, res) {
     const nowMs = Date.now();
     const latestMs = latest && latest.recorded_at ? new Date(latest.recorded_at).getTime() : 0;
     // Detect burst cascades (concurrent webhook executions within a 20-second window)
-    const isBurst = latest && Math.abs(nowMs - latestMs) < 20000;
+    const isChargingState = getIsCharging(user.id);
+    const incomingCharging =
+      eventName === 'charger_connected' ||
+      eventName === 'charging' ||
+      payload.charging === 'true' ||
+      payload.charging === '1' ||
+      payload.is_charging === '1' ||
+      payload.is_charging === 'true';
 
-    if (isBurst && eventName !== 'charger_connected') {
+    // If incoming event indicates charging, normalize eventName if it was just generic level_change
+    if (incomingCharging && eventName === 'level_change') {
+      eventName = 'charging';
+    }
+
+    if (isBurst && !isChargingState && !incomingCharging) {
       // 1. If disconnect arrives in a burst with higher level, keep true lower level
       if (eventName === 'charger_disconnected' && roundedLevel > latest.battery_level) {
         const updated = updateBatteryLog(latest.id, latest.battery_level, 'charger_disconnected', recordedAt);
@@ -624,11 +637,7 @@ app.get('/api/battery/stats', requireAuth, (req, res) => {
   const activity = getActivityFeed(userId, 25);
   const stats = getDailyStats(userId);
 
-  const isCharging =
-    hasData &&
-    (latest.event === 'charger_connected' ||
-      latest.event === 'charging' ||
-      latest.event === 'battery_full');
+  const isCharging = hasData && getIsCharging(userId);
 
   res.json({
     user: {
