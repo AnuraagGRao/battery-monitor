@@ -8,7 +8,14 @@ Built with **Node.js, Express, SQLite (WAL mode), Tailwind CSS, and Chart.js**.
 
 ## 🌟 Key Features
 
-- **MacroDroid Webhook Relay (`POST /api/webhook/battery`)**: Secure, pre-shared key guarded endpoint to ingest real-time battery status changes.
+- **Google Sign-In with Firebase**: One-click authentication using Google accounts via Firebase Auth alongside classic administrator credentials.
+- **Strict Per-User Privacy & Data Isolation**:
+  - Every registered or Google-authenticated user receives a **dedicated, rotatable webhook secret key** (`vw_sec_...`).
+  - Battery metrics, 24-hour discharge curves, cycle wear, and activity logs are strictly isolated by `user_id`.
+  - User A can never inspect or alter User B's battery telemetry.
+- **Android Automation & MacroDroid Relay (`POST` & `GET` `/api/webhook/battery`)**:
+  - Full support for **Automation by Jens Schröder** (open-source on F-Droid) and **MacroDroid**.
+  - Simple GET URLs require zero custom header configuration on Android.
 - **Hero Battery Metric**: Prominent battery level with Apple-style fluid fill and color coding:
   - 🟢 **Green (> 50%)**: Healthy operating band
   - 🟡 **Yellow (20% – 50%)**: Medium discharge
@@ -17,8 +24,8 @@ Built with **Node.js, Express, SQLite (WAL mode), Tailwind CSS, and Chart.js**.
 - **24-Hour Battery Curve**: Smooth spline line graph (Chart.js) plotting voltage drops and recharge slopes over time. Includes range toggles (6H, 12H, 24H, 3D, 7D).
 - **Daily Charge Cycle Calculator**: Computes cumulative lithium charge cycles today ($`\Sigma \Delta^+ / 100`$).
 - **Live Activity Feed**: Scrollable timeline of distinct battery events with timestamps and contextual icons.
-- **Private Session Auth**: HttpOnly JWT cookie authentication with bcrypt password hashing. Unauthenticated visitors are redirected to `/login`.
-- **In-Browser Webhook Simulator**: Built-in testing modal to fire simulated phone events without waiting on real battery drops.
+- **Secret Key Rotation**: In-dashboard 1-click secret key rotation with instant URL regeneration.
+- **In-Browser Webhook Simulator**: Built-in testing modal to fire simulated phone events directly into the user's private account.
 
 ---
 

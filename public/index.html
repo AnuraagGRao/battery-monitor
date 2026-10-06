@@ -24,7 +24,7 @@
     }
   </script>
 </head>
-<body class="min-h-screen font-sans p-4 sm:p-6 lg:p-8 flex flex-col justify-between selection:bg-emerald-500/20">
+<body class="min-h-screen font-sans p-4 sm:p-6 lg:p-8 flex flex-col justify-between selection:bg-emerald-500/20 bg-[#0B0D11] text-[#ECEDEE]">
 
   <!-- Main Dashboard Container -->
   <div class="max-w-6xl mx-auto w-full space-y-6">
@@ -48,17 +48,23 @@
       </div>
 
       <div class="flex items-center gap-2.5 flex-wrap">
-        <!-- Live status indicator -->
-        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs font-mono text-[#889096]">
-          <span class="text-[0.68rem] text-slate-400">Webhook:</span>
-          <span class="text-emerald-400 font-semibold">Active</span>
+        <!-- User Profile Pill -->
+        <div id="user-profile-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs">
+          <div id="user-avatar-wrap" class="w-6 h-6 rounded-full overflow-hidden bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center text-[0.68rem] font-bold text-black">
+            <span id="user-monogram">?</span>
+            <img id="user-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
+          </div>
+          <div class="flex flex-col">
+            <span id="user-display-name" class="font-semibold text-white text-[0.75rem] leading-tight">Loading...</span>
+            <span id="user-account-badge" class="text-[0.62rem] font-mono text-emerald-400 leading-tight">Private User</span>
+          </div>
         </div>
 
         <!-- Simulate Event Modal Trigger -->
         <button
           id="open-sim-btn"
           class="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-white/[0.06] hover:bg-white/[0.12] border border-white/12 text-[#ECEDEE] transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-          title="Simulate mock MacroDroid webhook payload"
+          title="Simulate mock webhook payload"
         >
           <span>🧪</span>
           <span>Test Webhook</span>
@@ -118,84 +124,74 @@
       </div>
 
       <!-- 2. DAILY INSIGHTS: CHARGE CYCLES TODAY -->
-      <div class="glass-card rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between">
+      <div class="glass-card rounded-3xl p-6 flex flex-col justify-between">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-mono uppercase tracking-wider text-[#889096]">Today's Charge Cycles</span>
-          <span class="text-[0.68rem] font-mono px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-bold">
-            24h Window
+          <span class="text-xs font-mono uppercase tracking-wider text-[#889096]">Battery Cycles Today</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">
+            Lithium Wear
           </span>
         </div>
 
-        <div class="my-3">
-          <div class="flex items-baseline gap-2">
-            <span id="cycle-count" class="text-5xl font-extrabold tracking-tight font-mono text-white">
-              0.00
-            </span>
-            <span class="text-xs font-mono text-slate-400">cycles</span>
-          </div>
-          <p class="text-xs text-[#889096] mt-1.5 leading-relaxed">
-            Calculated as cumulative recharge % / 100. Lithium wear is lowest when keeping cycles between 20% and 80%.
-          </p>
+        <div class="my-3 flex items-baseline gap-2">
+          <span id="stat-cycles" class="text-5xl font-extrabold font-mono text-cyan-400 tracking-tight">
+            0.00
+          </span>
+          <span class="text-xs font-mono text-[#889096]">cycles</span>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 pt-2.5 border-t border-white/[0.06] text-xs font-mono">
-          <div>
-            <span class="text-[#889096] text-[0.68rem] block">MIN / MAX TODAY</span>
-            <span id="min-max-today" class="text-white font-semibold">--% / --%</span>
-          </div>
-          <div>
-            <span class="text-[#889096] text-[0.68rem] block">PLUG-IN SESSIONS</span>
-            <span id="sessions-count" class="text-emerald-400 font-semibold">0 times</span>
-          </div>
+        <div class="pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs font-mono text-slate-400">
+          <span>Charging Events:</span>
+          <span id="stat-charging-count" class="font-bold text-white">0</span>
         </div>
       </div>
 
-      <!-- 3. LAST EVENT & TELEMETRY HEALTH -->
-      <div class="glass-card rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between">
+      <!-- 3. VOLTAGE & RANGE METRICS -->
+      <div class="glass-card rounded-3xl p-6 flex flex-col justify-between">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-mono uppercase tracking-wider text-[#889096]">Last Triggered Event</span>
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 live-dot"></span>
+          <span class="text-xs font-mono uppercase tracking-wider text-[#889096]">24H Operating Range</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
+            Min / Max
+          </span>
         </div>
 
-        <div class="my-3">
-          <div id="last-event-name" class="text-xl font-bold text-white capitalize flex items-center gap-2">
-            <span id="last-event-icon">⚡</span>
-            <span>Waiting for ping...</span>
+        <div class="my-3 grid grid-cols-2 gap-4">
+          <div class="p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+            <span class="text-[0.68rem] font-mono text-rose-400 block mb-0.5">LOWEST</span>
+            <span id="stat-min-level" class="text-3xl font-extrabold font-mono text-rose-300">--%</span>
           </div>
-          <div id="last-event-time" class="text-xs font-mono text-[#889096] mt-1">
-            Listening on MacroDroid webhook
+          <div class="p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+            <span class="text-[0.68rem] font-mono text-emerald-400 block mb-0.5">PEAK</span>
+            <span id="stat-max-level" class="text-3xl font-extrabold font-mono text-emerald-300">--%</span>
           </div>
         </div>
 
-        <div class="pt-2.5 border-t border-white/[0.06] flex items-center justify-between text-xs font-mono">
-          <span class="text-[#889096]">Auto-Refresh:</span>
-          <div class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span class="text-slate-300">Every 30s</span>
-          </div>
+        <div class="pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs font-mono text-slate-400">
+          <span>Data Points Today:</span>
+          <span id="stat-total-logs" class="font-bold text-white">0</span>
         </div>
       </div>
 
     </div>
 
-    <!-- ── MAIN ANALYTICS SECTION ── -->
+    <!-- ── SECOND ROW: CHART & ACTIVITY LOG ── -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-      <!-- 24H BATTERY CURVE TIMELINE (2 COLS) -->
-      <div class="glass-card rounded-3xl p-6 lg:col-span-2 flex flex-col justify-between">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <!-- MAIN CHART CONTAINER (2 COLS) -->
+      <div class="lg:col-span-2 glass-card rounded-3xl p-6 flex flex-col justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/[0.06] mb-4">
           <div>
             <h2 class="text-base font-bold text-white flex items-center gap-2">
-              <span>Battery Discharge & Recharge Curve</span>
+              <span>📈</span>
+              <span>Discharge &amp; Charging Curve</span>
             </h2>
-            <p class="text-xs text-[#889096]">Continuous percentage plot over the requested duration</p>
+            <p class="text-xs text-[#889096]">Real-time battery percentage timeline</p>
           </div>
 
-          <!-- Time Range Selector Buttons -->
-          <div class="inline-flex rounded-xl bg-white/[0.04] p-1 border border-white/10 text-xs font-mono">
+          <!-- Time Range Controls -->
+          <div class="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/10 text-xs font-mono">
             <button class="range-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer" data-hours="6">6H</button>
             <button class="range-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer" data-hours="12">12H</button>
-            <button class="range-btn px-2.5 py-1 rounded-lg bg-emerald-500 text-black font-bold shadow transition cursor-pointer" data-hours="24">24H</button>
+            <button class="range-btn active-range px-2.5 py-1 rounded-lg text-emerald-400 bg-emerald-500/15 font-bold transition cursor-pointer" data-hours="24">24H</button>
             <button class="range-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer" data-hours="72">3D</button>
             <button class="range-btn px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer" data-hours="168">7D</button>
           </div>
@@ -218,7 +214,6 @@
         </div>
 
         <div id="activity-feed" class="space-y-2.5 overflow-y-auto max-h-[340px] custom-scroll pr-1">
-          <!-- Populated dynamically via JS -->
           <div class="text-center py-10 text-xs font-mono text-slate-500">
             Fetching telemetry logs...
           </div>
@@ -228,18 +223,51 @@
     </div>
 
     <!-- ── ANDROID AUTOMATION SETUP GUIDE COLLAPSIBLE ── -->
-    <details class="glass-card rounded-2xl overflow-hidden group">
+    <details class="glass-card rounded-2xl overflow-hidden group" open>
       <summary class="px-6 py-4 flex items-center justify-between cursor-pointer group-hover:bg-white/[0.02] transition select-none">
         <div class="flex items-center gap-2 text-xs font-mono font-semibold uppercase tracking-wider text-slate-300">
           <span>📲</span>
-          <span>Android Automation Setup Guide (Automation by Jens Schröder &amp; MacroDroid)</span>
+          <span>Your Private Webhook Setup (Automation by Jens Schröder &amp; MacroDroid)</span>
         </div>
         <span class="text-xs font-mono text-[#889096] group-open:rotate-180 transition-transform">▼</span>
       </summary>
       <div class="px-6 pb-6 pt-2 border-t border-white/[0.06] text-xs space-y-4">
-        <p class="text-slate-400">
-          Configure an open-source rule in <strong>Automation by Jens Schröder</strong> (or MacroDroid) to transmit battery percentage and charger events to your webhook:
-        </p>
+
+        <!-- PERSONAL ISOLATED WEBHOOK BANNER -->
+        <div class="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-cyan-950/30 to-black border border-emerald-500/25 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-base">🔐</span>
+              <div>
+                <span class="font-bold text-emerald-300 text-xs uppercase tracking-wide block">Personal Webhook Secret</span>
+                <span class="text-[0.68rem] text-slate-400">Isolated to your account. Only your phone will populate your dashboard.</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="copy-secret-btn" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white font-mono text-[0.7rem] transition cursor-pointer">
+                Copy Key
+              </button>
+              <button id="rotate-key-btn" class="px-3 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 font-mono text-[0.7rem] transition cursor-pointer" title="Generate a fresh private key">
+                Rotate Key
+              </button>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-xl bg-black/60 border border-white/10 font-mono text-[0.72rem] text-slate-300 flex items-center justify-between gap-3 overflow-x-auto">
+            <span class="text-slate-500 select-none">Secret:</span>
+            <span id="user-webhook-secret-display" class="text-emerald-400 font-bold select-all break-all">Loading secret...</span>
+          </div>
+
+          <div class="space-y-1">
+            <span class="text-[0.68rem] uppercase font-mono text-slate-400 block font-semibold">Your Quick GET URL (Paste directly into Automation / MacroDroid):</span>
+            <div class="p-2.5 rounded-xl bg-black/70 border border-cyan-500/20 font-mono text-[0.72rem] text-cyan-200 flex items-center justify-between gap-2 overflow-x-auto">
+              <span id="user-quick-url" class="select-all break-all">Generating URL...</span>
+              <button id="copy-url-btn" class="flex-shrink-0 px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[0.68rem] cursor-pointer">
+                Copy URL
+              </button>
+            </div>
+          </div>
+        </div>
 
         <!-- Method A: Automation by Jens Schröder -->
         <div class="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3 font-mono text-[0.75rem]">
@@ -258,20 +286,9 @@
             <div class="p-2.5 rounded-lg bg-black/30 border border-white/5 space-y-1">
               <span class="text-white font-semibold block text-[0.7rem] uppercase text-slate-400">2. Action</span>
               <p>• <strong>Network</strong> ➔ <strong>HTTP Request</strong></p>
-              <p>• Method: <strong>POST</strong> (or GET)</p>
-              <p>• URL: <span class="text-amber-300">https://your-domain/api/webhook/battery</span></p>
-              <p>• Header: <span class="text-indigo-300">X-Webhook-Secret: macrodroid_battery_secret_2026</span></p>
+              <p>• Method: <strong>GET</strong> (easiest) or <strong>POST</strong></p>
+              <p>• Paste your Quick GET URL above!</p>
             </div>
-          </div>
-          <div class="p-3 rounded-lg bg-black/50 border border-white/5 text-[0.72rem] text-slate-300 overflow-x-auto">
-            <span class="text-slate-500 block mb-1">// JSON Body (or URL parameters):</span>
-            <pre>{
-  "battery_level": {battery_level},
-  "event": "{event}",
-  "time": "{now_iso}"
-}</pre>
-            <span class="text-slate-500 block mt-2">// Or simple GET Request (zero headers needed):</span>
-            <span class="text-amber-200">https://your-domain/api/webhook/battery?secret=macrodroid_battery_secret_2026&amp;level={battery_level}&amp;event=charger_connected</span>
           </div>
         </div>
 
@@ -288,9 +305,7 @@
             </div>
             <div class="p-2.5 rounded-lg bg-black/30 border border-white/5 space-y-1">
               <span class="text-white font-semibold block text-[0.7rem] uppercase text-slate-400">2. Action</span>
-              <p>• HTTP Request ➔ POST JSON</p>
-              <p>• URL: <span class="text-amber-300">https://your-domain/api/webhook/battery</span></p>
-              <p>• Header: <span class="text-indigo-300">X-Webhook-Secret: macrodroid_battery_secret_2026</span></p>
+              <p>• HTTP Request ➔ Paste your Quick GET URL above, or POST JSON with your Secret Key.</p>
             </div>
           </div>
         </div>
@@ -313,7 +328,7 @@
       </div>
 
       <p class="text-xs text-slate-400">
-        Simulate an incoming MacroDroid POST request without needing your phone right now.
+        Simulate an incoming phone event into your private dashboard account.
       </p>
 
       <form id="sim-form" class="space-y-4">
@@ -351,7 +366,7 @@
   </div>
 
   <footer class="mt-8 text-center text-xs font-mono text-[#889096]/70">
-    VoltWatch · Protected Hardware Battery Telemetry · Designed for Android + MacroDroid
+    VoltWatch · Protected Hardware Battery Telemetry · Designed for Android + Automation / MacroDroid
   </footer>
 
   <script src="/static/js/app.js"></script>
