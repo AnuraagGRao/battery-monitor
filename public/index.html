@@ -126,6 +126,9 @@
             <span id="hero-updated-at" class="text-[0.7rem] font-mono text-[#889096]">
               --:--:--
             </span>
+            <span id="hero-charge-eta" class="text-[0.68rem] font-mono font-medium text-amber-400 mt-0.5 hidden">
+              ⚡ ~--m to full
+            </span>
           </div>
         </div>
 
@@ -222,7 +225,16 @@
             <span class="text-sm">📋</span>
             <h2 class="text-base font-bold text-white">Activity Feed</h2>
           </div>
-          <span id="feed-count-badge" class="text-xs font-mono text-[#889096]">0 events</span>
+          <div class="flex items-center gap-2">
+            <span id="feed-count-badge" class="text-xs font-mono text-[#889096]">0 events</span>
+            <button
+              id="clear-feed-btn"
+              title="Clear all activity history"
+              class="text-[0.65rem] px-2 py-0.5 rounded-md font-mono text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition border border-white/5 hover:border-rose-500/20 cursor-pointer"
+            >
+              Clear
+            </button>
+          </div>
         </div>
 
         <div id="activity-feed" class="space-y-2.5 overflow-y-auto max-h-[340px] custom-scroll pr-1">

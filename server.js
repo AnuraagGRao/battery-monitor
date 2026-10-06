@@ -12,6 +12,7 @@ const jwt = require('jsonwebtoken');
 const {
   insertBatteryLog,
   updateBatteryLog,
+  clearBatteryLogs,
   getLatestLog,
   getTimeline,
   getActivityFeed,
@@ -567,11 +568,29 @@ function handleBatteryWebhook(req, res) {
       }
     }
 
+    // 4. Resolve time to full (charging estimate in seconds)
+    const rawTimeToFull =
+      payload.time_to_full !== undefined ? payload.time_to_full :
+      payload.time_to_charge !== undefined ? payload.time_to_charge :
+      payload.time_until_charged !== undefined ? payload.time_until_charged :
+      payload.charge_time !== undefined ? payload.charge_time :
+      payload.eta;
+
+    let timeToFull = null;
+    if (rawTimeToFull !== undefined && rawTimeToFull !== null && rawTimeToFull !== '') {
+      const parsedEta = Number(rawTimeToFull);
+      if (!Number.isNaN(parsedEta) && parsedEta > 0) {
+        // If provided in milliseconds (e.g. > 100,000), convert to seconds
+        timeToFull = parsedEta > 100000 ? Math.round(parsedEta / 1000) : Math.round(parsedEta);
+      }
+    }
+
     const record = insertBatteryLog({
       user_id: user.id,
       battery_level: roundedLevel,
       event: eventName,
       recorded_at: recordedAt,
+      time_to_full: timeToFull,
     });
 
     return res.status(201).json({
@@ -626,12 +645,19 @@ app.get('/api/battery/stats', requireAuth, (req, res) => {
       event: latest.event,
       recorded_at: latest.recorded_at,
       is_charging: isCharging,
+      time_to_full: latest.time_to_full || null,
     },
     timeline,
     activity,
     stats,
     query_hours: hours,
   });
+});
+
+// ── Clear Telemetry / Activity Log API (Protected, User-specific) ─────────
+app.post('/api/battery/clear', requireAuth, (req, res) => {
+  const deletedCount = clearBatteryLogs(req.user.id);
+  res.json({ success: true, count: deletedCount });
 });
 
 // ── Webhook Simulator API (Protected, Isolated to Logged-in User) ───────────

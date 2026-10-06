@@ -110,12 +110,12 @@ function updateTelemetryBadge(hasData, current) {
     badge.className =
       'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[0.65rem] font-mono uppercase font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 animate-pulse';
     dot.className = 'w-1.5 h-1.5 rounded-full bg-cyan-400';
-    text.innerText = '⚡ Charging Live';
+    text.innerText = 'Charging Live';
   } else if (diffMinutes <= 30) {
     badge.className =
       'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[0.65rem] font-mono uppercase font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25';
     dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse';
-    text.innerText = '● Live Telemetry';
+    text.innerText = 'Live Telemetry';
   } else if (diffMinutes <= 120) {
     badge.className =
       'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[0.65rem] font-mono uppercase font-bold bg-white/[0.06] text-slate-300 border border-white/10';
@@ -217,6 +217,7 @@ function updateDashboardUI(data) {
       batteryFill.style.color = colors.hex;
     }
 
+    const heroEta = document.getElementById('hero-charge-eta');
     if (current.is_charging) {
       if (chargingBadge) {
         chargingBadge.className =
@@ -228,6 +229,18 @@ function updateDashboardUI(data) {
         heroDesc.innerText = 'AC / Fast Power';
         heroDesc.className = 'text-xs font-semibold uppercase tracking-wider text-amber-300';
       }
+      if (heroEta) {
+        if (current.time_to_full && current.time_to_full > 0) {
+          const totalMin = Math.round(current.time_to_full / 60);
+          const hrs = Math.floor(totalMin / 60);
+          const mins = totalMin % 60;
+          const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+          heroEta.innerText = `⚡ ~${timeStr} to full`;
+          heroEta.classList.remove('hidden');
+        } else {
+          heroEta.classList.add('hidden');
+        }
+      }
     } else {
       if (chargingBadge) {
         chargingBadge.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold ${colors.badgeBg} ${colors.badgeText} border ${colors.badgeBorder}`;
@@ -238,6 +251,7 @@ function updateDashboardUI(data) {
         heroDesc.innerText = 'Discharging';
         heroDesc.className = 'text-xs font-semibold uppercase tracking-wider text-slate-300';
       }
+      if (heroEta) heroEta.classList.add('hidden');
     }
 
     if (heroUpdated) {
@@ -407,6 +421,10 @@ function renderActivityFeed(activity) {
         ? 'Recent'
         : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+      const etaBadge = item.time_to_full && item.time_to_full > 0
+        ? `<span class="text-[0.62rem] font-mono text-cyan-400 font-medium">⚡ ~${Math.round(item.time_to_full / 60)}m to full</span>`
+        : '';
+
       return `
         <div class="flex items-center justify-between p-2.5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition">
           <div class="flex items-center gap-2.5">
@@ -414,7 +432,10 @@ function renderActivityFeed(activity) {
               ${icon}
             </div>
             <div>
-              <span class="text-xs font-semibold text-slate-200 block">${title}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-semibold text-slate-200">${title}</span>
+                ${etaBadge}
+              </div>
               <span class="text-[0.65rem] font-mono text-slate-500">${timeStr}</span>
             </div>
           </div>
@@ -432,6 +453,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // 1. Initial Data Fetch & 15-second background auto-refresh
   loadDashboardData();
   pollInterval = setInterval(loadDashboardData, 15000);
+
+  // Clear Feed Button
+  const clearFeedBtn = document.getElementById('clear-feed-btn');
+  if (clearFeedBtn) {
+    clearFeedBtn.addEventListener('click', async () => {
+      if (!confirm('Clear all battery telemetry history and start fresh?')) return;
+      try {
+        clearFeedBtn.disabled = true;
+        clearFeedBtn.innerText = '...';
+        const res = await fetch('/api/battery/clear', { method: 'POST' });
+        if (res.ok) {
+          await loadDashboardData();
+        }
+      } catch (err) {
+        console.error('Failed to clear feed', err);
+      } finally {
+        clearFeedBtn.disabled = false;
+        clearFeedBtn.innerText = 'Clear';
+      }
+    });
+  }
 
   // 2. Manual Refresh
   const refreshBtn = document.getElementById('refresh-btn');

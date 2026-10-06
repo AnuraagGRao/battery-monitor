@@ -70,10 +70,13 @@ function initSchema() {
     db.exec('ALTER TABLE users ADD COLUMN webhook_key TEXT;');
   }
 
-  // 3. Migration: add user_id to battery_logs if missing
+  // 3. Migration: add user_id and time_to_full to battery_logs if missing
   const logCols = db.prepare('PRAGMA table_info(battery_logs)').all().map((c) => c.name);
   if (!logCols.includes('user_id')) {
     db.exec('ALTER TABLE battery_logs ADD COLUMN user_id INTEGER DEFAULT 1;');
+  }
+  if (!logCols.includes('time_to_full')) {
+    db.exec('ALTER TABLE battery_logs ADD COLUMN time_to_full INTEGER;');
   }
 
   // 4. Indexes for fast per-user lookups
@@ -112,20 +115,25 @@ initSchema();
 // ── DB Helpers ─────────────────────────────────────────────────────────────
 
 const insertLogStmt = db.prepare(`
-  INSERT INTO battery_logs (user_id, battery_level, event, recorded_at)
-  VALUES (@user_id, @battery_level, @event, @recorded_at)
+  INSERT INTO battery_logs (user_id, battery_level, event, recorded_at, time_to_full)
+  VALUES (@user_id, @battery_level, @event, @recorded_at, @time_to_full)
 `);
 
-function insertBatteryLog({ user_id = 1, battery_level, event, recorded_at }) {
-  const result = insertLogStmt.run({ user_id, battery_level, event, recorded_at });
-  return { id: result.lastInsertRowid, user_id, battery_level, event, recorded_at };
+function insertBatteryLog({ user_id = 1, battery_level, event, recorded_at, time_to_full = null }) {
+  const result = insertLogStmt.run({ user_id, battery_level, event, recorded_at, time_to_full });
+  return { id: result.lastInsertRowid, user_id, battery_level, event, recorded_at, time_to_full };
+}
+
+function clearBatteryLogs(userId) {
+  const info = db.prepare(`DELETE FROM battery_logs WHERE user_id = ?`).run(userId);
+  return info.changes;
 }
 
 function getLatestLog(userId = 1) {
   return (
     db
       .prepare(`
-        SELECT id, user_id, battery_level, event, recorded_at, created_at
+        SELECT id, user_id, battery_level, event, recorded_at, time_to_full, created_at
         FROM battery_logs
         WHERE user_id = ?
         ORDER BY recorded_at DESC
@@ -139,7 +147,7 @@ function getTimeline(userId = 1, hours = 24) {
   const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
   return db
     .prepare(`
-      SELECT id, user_id, battery_level, event, recorded_at
+      SELECT id, user_id, battery_level, event, recorded_at, time_to_full
       FROM battery_logs
       WHERE user_id = ? AND recorded_at >= ?
       ORDER BY recorded_at ASC
@@ -150,7 +158,7 @@ function getTimeline(userId = 1, hours = 24) {
 function getActivityFeed(userId = 1, limit = 30) {
   return db
     .prepare(`
-      SELECT id, user_id, battery_level, event, recorded_at, created_at
+      SELECT id, user_id, battery_level, event, recorded_at, time_to_full, created_at
       FROM battery_logs
       WHERE user_id = ?
       ORDER BY recorded_at DESC
@@ -455,6 +463,7 @@ module.exports = {
   generateWebhookKey,
   insertBatteryLog,
   updateBatteryLog,
+  clearBatteryLogs,
   getLatestLog,
   getTimeline,
   getActivityFeed,
